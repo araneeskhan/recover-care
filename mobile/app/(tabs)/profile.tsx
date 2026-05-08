@@ -8,8 +8,14 @@ import { Colors, Shadow } from '../../constants/Colors';
 
 const DEMO_PROFILE = {
   firstName:'Sarah', lastName:'Chen', mrn:'4729-883', age:42,
+  phone: '+1 (555) 234-5678',
   surgeryType:'Laparoscopic Cholecystectomy', surgeryDate:'2026-05-02', hospital:'Mercy General',
   recoveryDays:14, currentDay:5,
+  bloodType: 'A+',
+  allergies: 'Penicillin',
+  emergencyContactName: 'David Chen',
+  emergencyContactPhone: '+1 (555) 987-6543',
+  address: '450 Riverside Drive, Apt 12B, New York',
   careTeam: [
     { staff: { id:'d1', firstName:'Aarav', lastName:'Patel', staffRole:'SURGEON', specialty:'General Surgery' } },
     { staff: { id:'n1', firstName:'Émilie', lastName:'Laurent', staffRole:'NURSE', specialty:'Post-op Care' } },
@@ -24,11 +30,17 @@ export default function ProfileScreen() {
   const [checkInNudges, setCheckInNudges] = useState(true);
   const [careMessages, setCareMessages] = useState(true);
 
+  const fetchProfile = async () => {
+    try { const r = await patientAPI.getProfile(); setProfile(r.data); }
+    catch { setProfile(DEMO_PROFILE); }
+  };
+
+  useEffect(() => { fetchProfile(); }, []);
+
+  // Re-fetch when navigating back from edit screen
   useEffect(() => {
-    (async () => {
-      try { const r = await patientAPI.getProfile(); setProfile(r.data); }
-      catch { setProfile(DEMO_PROFILE); }
-    })();
+    const unsubscribe = router.subscribe?.(() => fetchProfile());
+    return () => unsubscribe?.();
   }, []);
 
   const handleLogout = () => {
@@ -49,7 +61,7 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
-        <TouchableOpacity style={s.editBtn}><Ionicons name="create-outline" size={22} color={Colors.text.primary} /></TouchableOpacity>
+        <TouchableOpacity style={s.editBtn} onPress={() => router.push('/edit-profile')}><Ionicons name="create-outline" size={22} color={Colors.text.primary} /></TouchableOpacity>
       </View>
 
       {/* Patient info card */}
@@ -110,6 +122,58 @@ export default function ProfileScreen() {
         })}
       </View>
 
+      {/* Personal Details */}
+      <Text style={s.sectionTitle}>PERSONAL DETAILS</Text>
+      <View style={s.detailCard}>
+        <View style={s.detailRow}>
+          <View style={s.detailIcon}><Ionicons name="call" size={16} color={Colors.primary.teal} /></View>
+          <View style={s.detailInfo}>
+            <Text style={s.detailLabel}>Phone</Text>
+            <Text style={s.detailValue}>{p.phone || 'Not set'}</Text>
+          </View>
+        </View>
+        <View style={s.detailDivider} />
+        <View style={s.detailRow}>
+          <View style={s.detailIcon}><Ionicons name="location" size={16} color={Colors.primary.teal} /></View>
+          <View style={s.detailInfo}>
+            <Text style={s.detailLabel}>Address</Text>
+            <Text style={s.detailValue}>{p.address || 'Not set'}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Medical Info */}
+      <Text style={s.sectionTitle}>MEDICAL INFO</Text>
+      <View style={s.detailCard}>
+        <View style={s.detailRow}>
+          <View style={[s.detailIcon, { backgroundColor: Colors.semantic.errorLight }]}><Ionicons name="water" size={16} color={Colors.semantic.error} /></View>
+          <View style={s.detailInfo}>
+            <Text style={s.detailLabel}>Blood Type</Text>
+            <Text style={s.detailValue}>{p.bloodType || 'Not set'}</Text>
+          </View>
+        </View>
+        <View style={s.detailDivider} />
+        <View style={s.detailRow}>
+          <View style={[s.detailIcon, { backgroundColor: Colors.semantic.warningLight }]}><Ionicons name="warning" size={16} color={Colors.semantic.warning} /></View>
+          <View style={s.detailInfo}>
+            <Text style={s.detailLabel}>Allergies</Text>
+            <Text style={s.detailValue}>{p.allergies || 'None reported'}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Emergency Contact */}
+      <Text style={s.sectionTitle}>EMERGENCY CONTACT</Text>
+      <View style={s.detailCard}>
+        <View style={s.detailRow}>
+          <View style={[s.detailIcon, { backgroundColor: Colors.semantic.errorLight }]}><Ionicons name="alert-circle" size={16} color={Colors.semantic.error} /></View>
+          <View style={s.detailInfo}>
+            <Text style={s.detailLabel}>{p.emergencyContactName || 'Not set'}</Text>
+            <Text style={s.detailValue}>{p.emergencyContactPhone || 'Add an emergency contact'}</Text>
+          </View>
+        </View>
+      </View>
+
       {/* Notifications */}
       <Text style={s.sectionTitle}>NOTIFICATIONS</Text>
       <View style={s.notifCard}>
@@ -127,6 +191,28 @@ export default function ProfileScreen() {
           <Text style={s.notifLabel}>Care team messages</Text>
           <Switch value={careMessages} onValueChange={setCareMessages} trackColor={{ false: Colors.border.light, true: Colors.primary.teal }} thumbColor="#FFF" />
         </View>
+      </View>
+
+      {/* Account */}
+      <Text style={s.sectionTitle}>ACCOUNT</Text>
+      <View style={s.detailCard}>
+        <TouchableOpacity style={s.detailRow} onPress={() => router.push('/edit-profile')}>
+          <View style={s.detailIcon}><Ionicons name="person" size={16} color={Colors.primary.teal} /></View>
+          <View style={[s.detailInfo, { flex: 1 }]}>
+            <Text style={s.detailLabel}>Edit Profile</Text>
+            <Text style={s.detailValue}>Update your personal information</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.neutral.mediumGray} />
+        </TouchableOpacity>
+        <View style={s.detailDivider} />
+        <TouchableOpacity style={s.detailRow} onPress={() => router.push('/edit-profile')}>
+          <View style={s.detailIcon}><Ionicons name="key" size={16} color={Colors.primary.teal} /></View>
+          <View style={[s.detailInfo, { flex: 1 }]}>
+            <Text style={s.detailLabel}>Change Password</Text>
+            <Text style={s.detailValue}>Update your account password</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.neutral.mediumGray} />
+        </TouchableOpacity>
       </View>
 
       {/* Sign out */}
@@ -171,6 +257,13 @@ const s = StyleSheet.create({
   teamSpec: { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
   teamActions: { flexDirection: 'row', gap: 12, marginTop: 12 },
   teamActionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(26,158,143,0.1)', justifyContent: 'center', alignItems: 'center' },
+  detailCard: { backgroundColor: '#FFF', marginHorizontal: 16, borderRadius: 16, padding: 16, ...Shadow.sm },
+  detailRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  detailIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(26,158,143,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  detailInfo: { },
+  detailLabel: { fontSize: 14, fontWeight: '600', color: Colors.text.primary },
+  detailValue: { fontSize: 13, color: Colors.text.secondary, marginTop: 1 },
+  detailDivider: { height: 1, backgroundColor: Colors.border.light, marginLeft: 50, marginVertical: 8 },
   notifCard: { backgroundColor: '#FFF', marginHorizontal: 16, borderRadius: 16, padding: 4, ...Shadow.sm },
   notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
   notifLabel: { fontSize: 15, color: Colors.text.primary, fontWeight: '500' },

@@ -18,19 +18,26 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="medications"
-          options={{
-            headerShown: false,
-            presentation: 'card',
-          }}
+        <Stack.Screen name="medications"
+          options={{ headerShown: false, presentation: 'card' }}
         />
-        <Stack.Screen
-          name="chat"
-          options={{
-            headerShown: false,
-            presentation: 'card',
-          }}
+        <Stack.Screen name="chat"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="edit-profile"
+          options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen name="history"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="appointments"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="resources"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="alerts"
+          options={{ headerShown: false, presentation: 'card' }}
         />
       </Stack>
     </AuthProvider>

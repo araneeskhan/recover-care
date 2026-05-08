@@ -69,12 +69,28 @@ export const authAPI = {
     api.post('/auth/login', { email, password }),
   register: (data: { email: string; password: string; firstName: string; lastName: string }) =>
     api.post('/auth/register', data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put('/auth/password', { currentPassword, newPassword }),
+  updateEmail: (email: string, password: string) =>
+    api.put('/auth/email', { email, password }),
 };
 
 // Patient
 export const patientAPI = {
   getProfile: () => api.get('/patients/me'),
   getDashboard: () => api.get('/patients/me/dashboard'),
+  updateProfile: (data: {
+    firstName?: string;
+    lastName?: string;
+    age?: number;
+    hospital?: string;
+    phone?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    bloodType?: string;
+    allergies?: string;
+    address?: string;
+  }) => api.put('/patients/me', data),
 };
 
 // Check-ins

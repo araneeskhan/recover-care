@@ -55,10 +55,16 @@ async function main() {
       lastName: 'Chen',
       mrn: '4729-883',
       age: 42,
+      phone: '+1 (555) 234-5678',
       surgeryType: 'Laparoscopic Cholecystectomy',
       surgeryDate: new Date('2026-05-02'),
       hospital: 'Mercy General',
       recoveryDays: 14,
+      emergencyContactName: 'David Chen',
+      emergencyContactPhone: '+1 (555) 987-6543',
+      bloodType: 'A+',
+      allergies: 'Penicillin',
+      address: '450 Riverside Drive, Apt 12B, New York',
     },
   });
 

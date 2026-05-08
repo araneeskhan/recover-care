@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -70,7 +70,7 @@ export default function HomeScreen() {
             <Text style={s.dateText}>{days[now.getDay()]}, {months[now.getMonth()]} {now.getDate()}</Text>
             <Text style={s.greetText}>{greeting},{'\n'}{d.patient?.firstName||user?.firstName||'Patient'}</Text>
           </View>
-          <TouchableOpacity style={s.bell}>
+          <TouchableOpacity style={s.bell} onPress={()=>router.push('/alerts')}>
             <Ionicons name="notifications-outline" size={24} color="#FFF"/>
             {d.unreadMessages>0&&<View style={s.bellDot}/>}
           </TouchableOpacity>
@@ -99,7 +99,34 @@ export default function HomeScreen() {
         </LinearGradient>
       </TouchableOpacity>}
 
-      <View style={s.secH}><Text style={s.secT}>Upcoming</Text><TouchableOpacity><Text style={s.seeAll}>See all</Text></TouchableOpacity></View>
+      {/* Quick Actions */}
+      <View style={s.secH}><Text style={s.secT}>Quick Actions</Text></View>
+      <View style={s.quickRow}>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/history')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:'rgba(26,158,143,0.12)'}]}><Ionicons name="analytics" size={22} color={Colors.primary.teal}/></View>
+          <Text style={s.quickLabel}>Trends</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/appointments')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:Colors.semantic.infoLight}]}><Ionicons name="calendar" size={22} color={Colors.semantic.info}/></View>
+          <Text style={s.quickLabel}>Appointments</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/medications')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:Colors.semantic.warningLight}]}><Ionicons name="medical" size={22} color={Colors.semantic.warning}/></View>
+          <Text style={s.quickLabel}>Medications</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>{
+          Alert.alert(
+            '🚨 Emergency SOS',
+            'This will call emergency services. Are you sure?',
+            [{text:'Cancel',style:'cancel'},{text:'Call 911',style:'destructive',onPress:()=>Linking.openURL('tel:911')}]
+          );
+        }} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:Colors.semantic.errorLight}]}><Ionicons name="alert-circle" size={22} color={Colors.semantic.error}/></View>
+          <Text style={s.quickLabel}>SOS</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.secH}><Text style={s.secT}>Upcoming</Text><TouchableOpacity onPress={()=>router.push('/appointments')}><Text style={s.seeAll}>See all</Text></TouchableOpacity></View>
 
       {d.medications?.filter((m:any)=>m.nextDoseAt)?.slice(0,1).map((m:any)=>(
         <TouchableOpacity key={m.id} style={s.upCard} onPress={()=>router.push('/medications')} activeOpacity={0.7}>
@@ -109,11 +136,53 @@ export default function HomeScreen() {
         </TouchableOpacity>))}
 
       {d.appointments?.slice(0,1).map((a:any)=>(
-        <TouchableOpacity key={a.id} style={s.upCard} activeOpacity={0.7}>
+        <TouchableOpacity key={a.id} style={s.upCard} onPress={()=>router.push('/appointments')} activeOpacity={0.7}>
           <View style={[s.upIc,{backgroundColor:Colors.semantic.infoLight}]}><Ionicons name="call" size={20} color={Colors.semantic.info}/></View>
           <View style={s.upInfo}><Text style={s.upT}>{a.title}</Text><Text style={s.upD}>{a.description}</Text></View>
           <View style={{alignItems:'flex-end'}}><Text style={s.upTime}>{fmtDate(a.dateTime)}</Text><Text style={s.upRel}>{relTime(a.dateTime)}</Text></View>
         </TouchableOpacity>))}
+
+      {/* Milestones */}
+      <View style={s.secH}><Text style={s.secT}>Recovery Milestones</Text></View>
+      {(() => {
+        const day = d.recovery?.currentDay || 1;
+        const total = d.recovery?.totalDays || 14;
+        const milestones = [
+          { day: 1, title: 'Surgery Complete', desc: 'Your healing journey begins', emoji: '🏥', done: day >= 1 },
+          { day: 3, title: 'First 72 Hours', desc: 'Critical healing period passed', emoji: '💪', done: day >= 3 },
+          { day: 7, title: 'One Week', desc: 'Halfway through recovery', emoji: '🌟', done: day >= 7 },
+          { day: 10, title: 'Almost There', desc: 'Final stretch of recovery', emoji: '🎯', done: day >= 10 },
+          { day: total, title: 'Full Recovery', desc: 'Cleared by your care team', emoji: '🎉', done: day >= total },
+        ];
+        return (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal:16,gap:10}}>
+            {milestones.map((m,i) => (
+              <View key={i} style={[s.mileCard, m.done && s.mileCardDone]}>
+                <Text style={{fontSize:28}}>{m.emoji}</Text>
+                <Text style={[s.mileTitle,m.done&&{color:Colors.primary.teal}]}>{m.title}</Text>
+                <Text style={s.mileDesc}>{m.desc}</Text>
+                <View style={[s.mileBadge,m.done?{backgroundColor:Colors.semantic.successLight}:{backgroundColor:Colors.background.primary}]}>
+                  <Text style={[s.mileBadgeText,m.done&&{color:Colors.semantic.success}]}>
+                    {m.done ? '✓ Complete' : `Day ${m.day}`}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        );
+      })()}
+
+      {/* Resources shortcut */}
+      <View style={s.secH}><Text style={s.secT}>Resources</Text></View>
+      <TouchableOpacity style={s.resCard} onPress={()=>router.push('/resources')} activeOpacity={0.7}>
+        <View style={s.resIcon}><Ionicons name="book" size={22} color={Colors.primary.teal}/></View>
+        <View style={{flex:1}}>
+          <Text style={s.resTitle}>Discharge Instructions</Text>
+          <Text style={s.resDesc}>Wound care, activity guidelines, diet & more</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={Colors.neutral.mediumGray}/>
+      </TouchableOpacity>
+
       <View style={{height:30}}/>
     </ScrollView>
   );
@@ -155,4 +224,18 @@ const s = StyleSheet.create({
   upD:{fontSize:13,color:Colors.text.secondary,marginTop:2},
   upTime:{fontSize:13,fontWeight:'600',color:Colors.text.primary},
   upRel:{fontSize:11,color:Colors.primary.teal,marginTop:2},
+  quickRow:{flexDirection:'row',paddingHorizontal:16,gap:10,marginBottom:8},
+  quickCard:{flex:1,backgroundColor:'#FFF',borderRadius:16,padding:14,alignItems:'center',...Shadow.sm},
+  quickIc:{width:44,height:44,borderRadius:22,justifyContent:'center',alignItems:'center',marginBottom:8},
+  quickLabel:{fontSize:12,fontWeight:'600',color:Colors.text.primary},
+  mileCard:{width:140,backgroundColor:'#FFF',borderRadius:16,padding:16,alignItems:'center',...Shadow.sm,borderWidth:1.5,borderColor:Colors.border.light},
+  mileCardDone:{borderColor:Colors.primary.teal,backgroundColor:'rgba(26,158,143,0.03)'},
+  mileTitle:{fontSize:13,fontWeight:'700',color:Colors.text.primary,marginTop:8,textAlign:'center'},
+  mileDesc:{fontSize:11,color:Colors.text.secondary,marginTop:2,textAlign:'center'},
+  mileBadge:{paddingHorizontal:10,paddingVertical:4,borderRadius:8,marginTop:8},
+  mileBadgeText:{fontSize:11,fontWeight:'600',color:Colors.text.secondary},
+  resCard:{flexDirection:'row',alignItems:'center',backgroundColor:'#FFF',marginHorizontal:16,marginBottom:12,borderRadius:16,padding:16,...Shadow.sm},
+  resIcon:{width:44,height:44,borderRadius:22,backgroundColor:'rgba(26,158,143,0.1)',justifyContent:'center',alignItems:'center',marginRight:12},
+  resTitle:{fontSize:15,fontWeight:'600',color:Colors.text.primary},
+  resDesc:{fontSize:13,color:Colors.text.secondary,marginTop:2},
 });

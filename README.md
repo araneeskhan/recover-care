@@ -51,11 +51,17 @@ On the hospital side, nurses and doctors gain **real-time visibility** into ever
 
 | Feature | Description |
 |---------|-------------|
-| 🏠 **Recovery Dashboard** | Recovery progress ring, vitals strip, and upcoming tasks at a glance |
+| 🏠 **Recovery Dashboard** | Recovery progress ring, vitals strip, quick actions, milestones, and upcoming tasks at a glance |
 | 📋 **Daily Check-In** | 4-step guided form: Mood → Pain & Symptoms → Vitals → Review |
 | 💬 **Encrypted Messaging** | Two-way chat with care team, read receipts, online status |
 | 💊 **Medication Tracker** | Daily dose schedule, mark-taken, progress bars, PRN support |
-| 👤 **Patient Profile** | Surgery info, care team contacts, notification preferences |
+| 👤 **Patient Profile** | Full profile editing, surgery info, care team, emergency contacts, medical info |
+| 📊 **Recovery Trends** | SVG charts for pain, temperature, mood trends + symptom frequency analysis |
+| 📅 **Appointments** | Timeline view, next-appointment hero card, smart icons per type |
+| 🔔 **Alerts & Notifications** | View all alert engine outputs with severity filtering and resolution status |
+| 📚 **Discharge Resources** | 6-category care guide: wound care, activity, diet, meds, warning signs, FAQ |
+| 🎯 **Recovery Milestones** | Achievement cards tracking progress (72h, 1 week, full recovery) |
+| 🆘 **Emergency SOS** | One-tap emergency call with 2-step confirmation dialog |
 | 🚨 **Smart Alerts** | 4-tier severity engine (Critical/High/Medium/Low) auto-flags dangerous symptoms |
 | 🔐 **JWT Authentication** | Secure token-based auth with bcrypt password hashing |
 | 🐳 **Dockerized Backend** | One-command setup with Docker Compose |

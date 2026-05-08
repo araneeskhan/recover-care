@@ -43,10 +43,16 @@ model Patient {
   lastName     String
   mrn          String   @unique
   age          Int
+  phone        String?
   surgeryType  String
   surgeryDate  DateTime
   hospital     String
   recoveryDays Int      @default(14)
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  bloodType    String?
+  allergies    String?
+  address      String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
