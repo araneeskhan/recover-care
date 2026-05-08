@@ -79,17 +79,17 @@ On the hospital side, nurses and doctors gain **real-time visibility** into ever
   <tr>
     <td align="center"><b>Medications</b></td>
     <td align="center"><b>Profile</b></td>
-    <td align="center"><b>Login</b></td>
+    <td align="center"><b>Recovery</b></td>
+    <td align="center"><b>Emergency</b></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/medications.png" width="250"/></td>
     <td><img src="docs/screenshots/profile.png" width="250"/></td>
-    <td><img src="docs/screenshots/login.png" width="250"/></td>
+    <td><img src="docs/screenshots/recovery.png" width="250"/></td>
+    <td><img src="docs/screenshots/emergency.png" width="250"/></td>
   </tr>
 </table>
 </div>
-
-> 💡 *Add your own screenshots to `docs/screenshots/` and they'll appear above!*
 
 ---
 
@@ -178,17 +178,13 @@ cd recover-care
 
 ### 2️⃣ Set Up Environment Variables
 
-Create a `.env` file in the project root:
+Copy the example environment file and configure it:
 
-```env
-POSTGRES_USER=recovercare
-POSTGRES_PASSWORD=recovercare_secret_2026
-POSTGRES_DB=recovercare
-DATABASE_URL=postgresql://recovercare:recovercare_secret_2026@db:5432/recovercare
-API_PORT=3001
-JWT_SECRET=rc-jwt-super-secret-key-change-in-production
-NODE_ENV=development
+```bash
+cp .env.example .env
 ```
+
+Update the values in `.env` as needed (defaults work out of the box for local dev).
 
 ### 3️⃣ Start the Backend (Docker)
 
@@ -218,12 +214,7 @@ Scan the QR code with **Expo Go** on your phone.
 
 ### 5️⃣ Login
 
-Use the demo credentials:
-
-| Field | Value |
-|-------|-------|
-| **Email** | `sarah.chen@email.com` |
-| **Password** | `password123` |
+The database is automatically seeded with demo accounts. Check the seed file at `server/prisma/seed.ts` for credentials.
 
 > **📝 Note:** If running on a physical device, the app auto-detects your machine's IP from Expo's dev server. No manual configuration needed!
 
@@ -346,6 +337,8 @@ The intelligent alert system evaluates every check-in submission against clinica
 
 ## 🗄 Database Schema
 
+The app uses **10 relational tables** managed by Prisma ORM. See `server/prisma/schema.prisma` for full details.
+
 ```mermaid
 erDiagram
     User ||--o| Patient : has
@@ -359,65 +352,7 @@ erDiagram
     Staff ||--o{ CareTeamAssignment : assigned
     Staff ||--o{ Message : receives
     Medication ||--o{ MedicationLog : logs
-
-    User {
-        uuid id PK
-        string email UK
-        string password
-        enum role
-    }
-    Patient {
-        uuid id PK
-        string firstName
-        string lastName
-        string mrn UK
-        int age
-        string surgeryType
-        date surgeryDate
-        string hospital
-        int recoveryDays
-    }
-    Staff {
-        uuid id PK
-        string firstName
-        string lastName
-        enum staffRole
-        string specialty
-    }
-    CheckIn {
-        uuid id PK
-        int painLevel
-        float temperature
-        array symptoms
-        string notes
-        string mood
-    }
-    Medication {
-        uuid id PK
-        string name
-        string dosage
-        string frequency
-        int totalDoses
-        int takenDoses
-        boolean isActive
-    }
-    Alert {
-        uuid id PK
-        enum severity
-        string message
-        boolean isResolved
-    }
 ```
-
----
-
-## 👥 Demo Accounts
-
-| Role | Email | Password |
-|------|-------|----------|
-| 🧑‍🤝‍🧑 Patient | `sarah.chen@email.com` | `password123` |
-| 👨‍⚕️ Doctor | `dr.patel@mercygeneral.com` | `password123` |
-| 👩‍⚕️ Nurse | `emilie.laurent@mercygeneral.com` | `password123` |
 
 ---
 
