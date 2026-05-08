@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#0B1F3F"/>
+  <circle cx="512" cy="420" r="180" fill="none" stroke="#1A9E8F" stroke-width="20"/>
+  <path d="M512 300 L512 540" stroke="#1A9E8F" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="512" cy="540" r="10" fill="#1A9E8F"/>
+  <text x="512" y="720" text-anchor="middle" font-family="Arial" font-size="72" font-weight="bold" fill="white">RecoverCare</text>
+</svg>

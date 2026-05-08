@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Environment
+.env
+
+# Prisma
+prisma/migrations/
+
+# Misc
+*.log
+*.tsbuildinfo
