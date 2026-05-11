@@ -63,6 +63,11 @@ On the hospital side, nurses and doctors gain **real-time visibility** into ever
 | 🎯 **Recovery Milestones** | Achievement cards tracking progress (72h, 1 week, full recovery) |
 | 🆘 **Emergency SOS** | One-tap emergency call with 2-step confirmation dialog |
 | 🚨 **Smart Alerts** | 4-tier severity engine (Critical/High/Medium/Low) auto-flags dangerous symptoms |
+| 🩹 **Wound Photo Journal** | Timeline gallery for daily incision photos with healing status tracking |
+| 💡 **Daily Recovery Tips** | Context-aware tips on the home screen, rotating based on recovery day |
+| 📖 **Symptom Glossary** | Searchable reference of 15+ post-surgical symptoms with severity and self-care advice |
+| 📤 **Health Report** | Shareable recovery summary with vitals timeline, medication adherence, and care team |
+| 🌙 **Dark Mode** | System-wide dark theme toggle with AsyncStorage persistence |
 | 🔐 **JWT Authentication** | Secure token-based auth with bcrypt password hashing |
 | 🐳 **Dockerized Backend** | One-command setup with Docker Compose |
 
@@ -237,6 +242,9 @@ recover-care/
 │   │   ├── login.tsx               # Login screen
 │   │   ├── chat.tsx                # Chat conversation screen
 │   │   ├── medications.tsx         # Medications tracker
+│   │   ├── wound-journal.tsx       # 🩹 Wound photo timeline
+│   │   ├── symptom-glossary.tsx    # 📖 Searchable symptom guide
+│   │   ├── health-report.tsx       # 📤 Shareable recovery report
 │   │   └── (tabs)/
 │   │       ├── _layout.tsx         # Tab navigator (4 tabs)
 │   │       ├── index.tsx           # 🏠 Home dashboard
@@ -263,7 +271,8 @@ recover-care/
 │   │   │   ├── checkins.ts         # Daily check-ins
 │   │   │   ├── messages.ts         # Messaging
 │   │   │   ├── medications.ts      # Medication tracking
-│   │   │   └── appointments.ts     # Appointments
+│   │   │   ├── appointments.ts     # Appointments
+│   │   │   └── wound-photos.ts     # 🩹 Wound photo journal
 │   │   └── services/
 │   │       └── alertEngine.ts      # 🚨 Intelligent alert rules
 │   ├── prisma/
@@ -343,7 +352,7 @@ The intelligent alert system evaluates every check-in submission against clinica
 
 ## 🗄 Database Schema
 
-The app uses **10 relational tables** managed by Prisma ORM. See `server/prisma/schema.prisma` for full details.
+The app uses **11 relational tables** managed by Prisma ORM. See `server/prisma/schema.prisma` for full details.
 
 ```mermaid
 erDiagram
@@ -358,6 +367,7 @@ erDiagram
     Staff ||--o{ CareTeamAssignment : assigned
     Staff ||--o{ Message : receives
     Medication ||--o{ MedicationLog : logs
+    Patient ||--o{ WoundPhoto : captures
 ```
 
 ---

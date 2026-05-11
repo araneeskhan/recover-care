@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { patientAPI } from '../../services/api';
 import { Colors, Shadow } from '../../constants/Colors';
+import { useTheme } from '../../constants/Colors';
 
 const DEMO_PROFILE = {
   firstName:'Sarah', lastName:'Chen', mrn:'4729-883', age:42,
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
   const [medReminders, setMedReminders] = useState(true);
   const [checkInNudges, setCheckInNudges] = useState(true);
   const [careMessages, setCareMessages] = useState(true);
+  const { isDark, toggleTheme } = useTheme();
 
   const fetchProfile = async () => {
     try { const r = await patientAPI.getProfile(); setProfile(r.data); }
@@ -190,6 +192,14 @@ export default function ProfileScreen() {
         <View style={s.notifRow}>
           <Text style={s.notifLabel}>Care team messages</Text>
           <Switch value={careMessages} onValueChange={setCareMessages} trackColor={{ false: Colors.border.light, true: Colors.primary.teal }} thumbColor="#FFF" />
+        </View>
+        <View style={s.notifDivider} />
+        <View style={s.notifRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={isDark ? '#F2994A' : Colors.primary.teal} />
+            <Text style={s.notifLabel}>Dark Mode</Text>
+          </View>
+          <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: Colors.border.light, true: Colors.primary.teal }} thumbColor="#FFF" />
         </View>
       </View>
 

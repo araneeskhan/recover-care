@@ -3,9 +3,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../hooks/useAuth';
 import { Colors } from '../constants/Colors';
+import { ThemeProvider } from '../constants/Colors';
 
 export default function RootLayout() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <StatusBar style="light" />
       <Stack
@@ -39,7 +41,17 @@ export default function RootLayout() {
         <Stack.Screen name="alerts"
           options={{ headerShown: false, presentation: 'card' }}
         />
+        <Stack.Screen name="wound-journal"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="symptom-glossary"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen name="health-report"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
       </Stack>
     </AuthProvider>
+    </ThemeProvider>
   );
 }

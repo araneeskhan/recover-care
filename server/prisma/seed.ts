@@ -7,6 +7,7 @@ async function main() {
   console.log('🌱 Seeding RecoverCare database...');
 
   // Clean existing data
+  await prisma.woundPhoto.deleteMany();
   await prisma.medicationLog.deleteMany();
   await prisma.alert.deleteMany();
   await prisma.message.deleteMany();
@@ -265,6 +266,28 @@ async function main() {
       duration: 30,
     },
   });
+
+  // Create Wound Photos
+  for (let day = 1; day <= 4; day++) {
+    const photoDate = new Date('2026-05-02');
+    photoDate.setDate(photoDate.getDate() + day);
+    photoDate.setHours(9, 0, 0, 0);
+
+    await prisma.woundPhoto.create({
+      data: {
+        patientId: patient.id,
+        photoUri: `local://wound_day_${day}.jpg`,
+        caption: day === 1
+          ? 'Day 1 post-op — bandage just removed, slight redness around incision'
+          : day === 2
+          ? 'Day 2 — swelling going down, cleaned with saline'
+          : day === 3
+          ? 'Day 3 — looking much better, no discharge'
+          : 'Day 4 — healing nicely, pinkness fading',
+        createdAt: photoDate,
+      },
+    });
+  }
 
   console.log('✅ Seed data created successfully!');
   console.log(`   Patient: Sarah Chen (${patientUser.email})`);

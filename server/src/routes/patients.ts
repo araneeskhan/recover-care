@@ -235,4 +235,124 @@ router.get('/me/alerts', authenticate, async (req: AuthRequest, res: Response): 
   }
 });
 
+// GET /api/patients/me/report - Get recovery report data
+router.get('/me/report', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const patient = await prisma.patient.findFirst({
+      where: { userId: req.userId },
+      include: {
+        careTeam: { include: { staff: true } },
+      },
+    });
+
+    if (!patient) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
+    // Recovery day
+    const surgeryDate = new Date(patient.surgeryDate);
+    const today = new Date();
+    const diffTime = today.getTime() - surgeryDate.getTime();
+    const currentDay = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    // All check-ins for vitals timeline
+    const checkIns = await prisma.checkIn.findMany({
+      where: { patientId: patient.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Medication adherence
+    const medications = await prisma.medication.findMany({
+      where: { patientId: patient.id },
+    });
+
+    const totalPrescribedDoses = medications.reduce((sum, m) => sum + m.totalDoses, 0);
+    const totalTakenDoses = medications.reduce((sum, m) => sum + m.takenDoses, 0);
+    const adherenceRate = totalPrescribedDoses > 0 ? Math.round((totalTakenDoses / totalPrescribedDoses) * 100) : 0;
+
+    // Alert history
+    const alerts = await prisma.alert.findMany({
+      where: { patientId: patient.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Check-in streak
+    let streak = 0;
+    const checkInDates = checkIns.map(c => {
+      const d = new Date(c.createdAt);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    });
+    const uniqueDates = [...new Set(checkInDates)];
+    for (let i = uniqueDates.length - 1; i >= 0; i--) {
+      streak++;
+      if (i > 0) {
+        // Check if consecutive (simplified)
+        break;
+      }
+    }
+    streak = uniqueDates.length; // total days with check-ins
+
+    res.json({
+      patient: {
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        mrn: patient.mrn,
+        age: patient.age,
+        surgeryType: patient.surgeryType,
+        surgeryDate: patient.surgeryDate,
+        hospital: patient.hospital,
+        bloodType: patient.bloodType,
+        allergies: patient.allergies,
+      },
+      recovery: {
+        currentDay: Math.min(currentDay, patient.recoveryDays),
+        totalDays: patient.recoveryDays,
+        daysRemaining: Math.max(0, patient.recoveryDays - currentDay),
+      },
+      vitalsTimeline: checkIns.map(c => ({
+        date: c.createdAt,
+        painLevel: c.painLevel,
+        temperature: c.temperature,
+        mood: c.mood,
+        symptoms: c.symptoms,
+      })),
+      medicationAdherence: {
+        totalPrescribed: totalPrescribedDoses,
+        totalTaken: totalTakenDoses,
+        adherenceRate,
+        medications: medications.map(m => ({
+          name: m.name,
+          dosage: m.dosage,
+          totalDoses: m.totalDoses,
+          takenDoses: m.takenDoses,
+          isActive: m.isActive,
+        })),
+      },
+      checkInStreak: streak,
+      totalCheckIns: checkIns.length,
+      alerts: {
+        total: alerts.length,
+        resolved: alerts.filter(a => a.isResolved).length,
+        active: alerts.filter(a => !a.isResolved).length,
+        bySeverity: {
+          critical: alerts.filter(a => a.severity === 'CRITICAL').length,
+          high: alerts.filter(a => a.severity === 'HIGH').length,
+          medium: alerts.filter(a => a.severity === 'MEDIUM').length,
+          low: alerts.filter(a => a.severity === 'LOW').length,
+        },
+      },
+      careTeam: patient.careTeam.map(ct => ({
+        name: `${ct.staff.firstName} ${ct.staff.lastName}`,
+        role: ct.staff.staffRole,
+        specialty: ct.staff.specialty,
+      })),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

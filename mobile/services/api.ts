@@ -91,6 +91,8 @@ export const patientAPI = {
     allergies?: string;
     address?: string;
   }) => api.put('/patients/me', data),
+  getReport: () => api.get('/patients/me/report'),
+  getAlerts: () => api.get('/patients/me/alerts'),
 };
 
 // Check-ins
@@ -124,6 +126,13 @@ export const medicationAPI = {
 // Appointments
 export const appointmentAPI = {
   getUpcoming: () => api.get('/appointments'),
+};
+
+// Wound Photos
+export const woundPhotoAPI = {
+  getAll: () => api.get('/wound-photos'),
+  create: (data: { photoUri: string; caption?: string }) =>
+    api.post('/wound-photos', data),
 };
 
 export default api;

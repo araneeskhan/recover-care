@@ -126,6 +126,59 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* More Actions */}
+      <View style={s.quickRow}>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/wound-journal')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:'rgba(142,68,173,0.1)'}]}><Ionicons name="bandage" size={22} color="#8E44AD"/></View>
+          <Text style={s.quickLabel}>Wound Log</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/health-report')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:'rgba(52,152,219,0.1)'}]}><Ionicons name="document-text" size={22} color="#3498DB"/></View>
+          <Text style={s.quickLabel}>Report</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/symptom-glossary')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:'rgba(39,174,96,0.1)'}]}><Ionicons name="book" size={22} color="#27AE60"/></View>
+          <Text style={s.quickLabel}>Symptoms</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickCard} onPress={()=>router.push('/resources')} activeOpacity={0.7}>
+          <View style={[s.quickIc,{backgroundColor:'rgba(26,158,143,0.06)'}]}><Ionicons name="library" size={22} color={Colors.primary.teal}/></View>
+          <Text style={s.quickLabel}>Resources</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Daily Recovery Tips */}
+      <View style={s.secH}><Text style={s.secT}>Today's Recovery Tip</Text></View>
+      {(() => {
+        const day = d.recovery?.currentDay || 1;
+        const tips = [
+          { day: 1, emoji: '🛌', title: 'Rest Is Recovery', text: 'Your body does its best healing while you rest. Aim for 8–10 hours of sleep tonight.', color: '#8E44AD' },
+          { day: 2, emoji: '🚶', title: 'Start Moving Gently', text: 'Take a short 5-minute walk every few hours. Movement prevents blood clots and aids healing.', color: '#3498DB' },
+          { day: 3, emoji: '💧', title: 'Stay Hydrated', text: 'Drink 8+ glasses of water today. Proper hydration supports wound healing and medication absorption.', color: '#1A9E8F' },
+          { day: 4, emoji: '🍎', title: 'Fuel Your Recovery', text: 'Focus on protein-rich foods (eggs, fish, beans) to support tissue repair. Avoid processed foods.', color: '#27AE60' },
+          { day: 5, emoji: '📸', title: 'Document Your Healing', text: 'Take a photo of your incision to track progress. Compare with yesterday — healing takes time!', color: '#F2994A' },
+          { day: 6, emoji: '🧘', title: 'Mind-Body Connection', text: 'Try 5 minutes of deep breathing. Stress hormones can slow wound healing.', color: '#8E44AD' },
+          { day: 7, emoji: '🎉', title: 'One Week Milestone!', text: 'You made it through the first week! Your incision should be less tender now. Keep up the great work.', color: '#E74C3C' },
+          { day: 8, emoji: '🏃', title: 'Increase Activity', text: 'Try walking for 15 minutes today. Gradually increase duration but avoid heavy lifting.', color: '#3498DB' },
+          { day: 9, emoji: '💊', title: 'Medication Check', text: 'Review your medication schedule. Some meds may be tapering off — consult your care team.', color: '#F2994A' },
+          { day: 10, emoji: '🩹', title: 'Wound Care Reminder', text: 'Keep your incision clean and dry. It\'s normal for it to itch as it heals — don\'t scratch!', color: '#E74C3C' },
+          { day: 11, emoji: '😊', title: 'Emotional Check-In', text: 'Feeling frustrated or down is normal during recovery. Talk to someone if you need support.', color: '#8E44AD' },
+          { day: 12, emoji: '🥗', title: 'Anti-Inflammatory Foods', text: 'Add berries, leafy greens, and fatty fish to your diet to reduce inflammation naturally.', color: '#27AE60' },
+          { day: 13, emoji: '🔔', title: 'Prepare for Follow-Up', text: 'Your follow-up appointment is coming. Write down any questions for your doctor.', color: '#3498DB' },
+          { day: 14, emoji: '🏆', title: 'Recovery Complete!', text: 'Congratulations on completing your recovery period! Continue following care instructions.', color: '#1A9E8F' },
+        ];
+        const tip = tips[Math.min(day - 1, tips.length - 1)];
+        return (
+          <TouchableOpacity style={s.tipCard} activeOpacity={0.85}>
+            <View style={[s.tipEmoji, { backgroundColor: tip.color + '15' }]}><Text style={{ fontSize: 28 }}>{tip.emoji}</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.tipTitle, { color: tip.color }]}>{tip.title}</Text>
+              <Text style={s.tipText}>{tip.text}</Text>
+              <Text style={s.tipDay}>Day {day} tip</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })()}
+
       <View style={s.secH}><Text style={s.secT}>Upcoming</Text><TouchableOpacity onPress={()=>router.push('/appointments')}><Text style={s.seeAll}>See all</Text></TouchableOpacity></View>
 
       {d.medications?.filter((m:any)=>m.nextDoseAt)?.slice(0,1).map((m:any)=>(
@@ -171,17 +224,6 @@ export default function HomeScreen() {
           </ScrollView>
         );
       })()}
-
-      {/* Resources shortcut */}
-      <View style={s.secH}><Text style={s.secT}>Resources</Text></View>
-      <TouchableOpacity style={s.resCard} onPress={()=>router.push('/resources')} activeOpacity={0.7}>
-        <View style={s.resIcon}><Ionicons name="book" size={22} color={Colors.primary.teal}/></View>
-        <View style={{flex:1}}>
-          <Text style={s.resTitle}>Discharge Instructions</Text>
-          <Text style={s.resDesc}>Wound care, activity guidelines, diet & more</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.neutral.mediumGray}/>
-      </TouchableOpacity>
 
       <View style={{height:30}}/>
     </ScrollView>
@@ -238,4 +280,9 @@ const s = StyleSheet.create({
   resIcon:{width:44,height:44,borderRadius:22,backgroundColor:'rgba(26,158,143,0.1)',justifyContent:'center',alignItems:'center',marginRight:12},
   resTitle:{fontSize:15,fontWeight:'600',color:Colors.text.primary},
   resDesc:{fontSize:13,color:Colors.text.secondary,marginTop:2},
+  tipCard:{flexDirection:'row',backgroundColor:'#FFF',marginHorizontal:16,borderRadius:16,padding:16,gap:14,...Shadow.sm,marginBottom:4},
+  tipEmoji:{width:52,height:52,borderRadius:26,justifyContent:'center',alignItems:'center'},
+  tipTitle:{fontSize:15,fontWeight:'700',marginBottom:4},
+  tipText:{fontSize:13,color:Colors.text.secondary,lineHeight:18},
+  tipDay:{fontSize:11,color:Colors.neutral.mediumGray,marginTop:6,fontWeight:'500'},
 });
