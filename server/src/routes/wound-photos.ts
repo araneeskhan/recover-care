@@ -1,21 +1,15 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/wound-photos - Get all wound photos for patient
-router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/wound-photos (PATIENT only)
+router.get('/', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
-
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
     const photos = await prisma.woundPhoto.findMany({
       where: { patientId: patient.id },
@@ -29,31 +23,17 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   }
 });
 
-// POST /api/wound-photos - Create a wound photo entry
-router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/wound-photos (PATIENT only)
+router.post('/', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
-
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
     const { photoUri, caption } = req.body;
-
-    if (!photoUri) {
-      res.status(400).json({ error: 'Photo URI is required' });
-      return;
-    }
+    if (!photoUri) { res.status(400).json({ error: 'Photo URI is required' }); return; }
 
     const photo = await prisma.woundPhoto.create({
-      data: {
-        patientId: patient.id,
-        photoUri,
-        caption: caption || null,
-      },
+      data: { patientId: patient.id, photoUri, caption: caption || null },
     });
 
     res.status(201).json(photo);

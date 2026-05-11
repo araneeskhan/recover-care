@@ -1,27 +1,18 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/appointments - Get upcoming appointments
-router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/appointments - Get upcoming appointments (PATIENT only)
+router.get('/', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
-
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
     const appointments = await prisma.appointment.findMany({
-      where: {
-        patientId: patient.id,
-        dateTime: { gte: new Date() },
-      },
+      where: { patientId: patient.id, dateTime: { gte: new Date() } },
       orderBy: { dateTime: 'asc' },
     });
 

@@ -1,12 +1,12 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/patients/me - Get current patient profile
-router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/me', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const patient = await prisma.patient.findFirst({
       where: { userId: req.userId },
@@ -42,7 +42,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
 });
 
 // GET /api/patients/me/dashboard - Home screen data
-router.get('/me/dashboard', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/me/dashboard', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const patient = await prisma.patient.findFirst({
       where: { userId: req.userId },
@@ -144,7 +144,7 @@ router.get('/me/dashboard', authenticate, async (req: AuthRequest, res: Response
 });
 
 // PUT /api/patients/me - Update patient profile
-router.put('/me', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/me', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const patient = await prisma.patient.findFirst({
       where: { userId: req.userId },
@@ -211,7 +211,7 @@ router.put('/me', authenticate, async (req: AuthRequest, res: Response): Promise
 });
 
 // GET /api/patients/me/alerts - Get patient alerts
-router.get('/me/alerts', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/me/alerts', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const patient = await prisma.patient.findFirst({
       where: { userId: req.userId },
@@ -236,7 +236,7 @@ router.get('/me/alerts', authenticate, async (req: AuthRequest, res: Response): 
 });
 
 // GET /api/patients/me/report - Get recovery report data
-router.get('/me/report', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/me/report', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const patient = await prisma.patient.findFirst({
       where: { userId: req.userId },

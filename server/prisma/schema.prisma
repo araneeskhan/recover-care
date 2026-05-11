@@ -67,18 +67,22 @@ model Patient {
 }
 
 model Staff {
-  id        String    @id @default(uuid())
-  userId    String    @unique
-  firstName String
-  lastName  String
-  staffRole StaffRole
-  specialty String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  firstName     String
+  lastName      String
+  staffRole     StaffRole
+  specialty     String
+  department    String?
+  licenseNumber String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  user        User                 @relation(fields: [userId], references: [id])
-  assignments CareTeamAssignment[]
-  messages    Message[]            @relation("StaffMessages")
+  user             User                 @relation(fields: [userId], references: [id])
+  assignments      CareTeamAssignment[]
+  messages         Message[]            @relation("StaffMessages")
+  resolvedAlerts   Alert[]              @relation("AlertResolutions")
 }
 
 model CheckIn {
@@ -90,9 +94,11 @@ model CheckIn {
   notes       String?
   mood        String?
   step        Int      @default(4)
+  staffNotes  String?
   createdAt   DateTime @default(now())
 
   patient Patient @relation(fields: [patientId], references: [id])
+  alerts  Alert[]
 }
 
 model Medication {
@@ -148,15 +154,20 @@ model Appointment {
 }
 
 model Alert {
-  id         String        @id @default(uuid())
-  patientId  String
-  checkInId  String?
-  severity   AlertSeverity
-  message    String
-  isResolved Boolean       @default(false)
-  createdAt  DateTime      @default(now())
+  id           String        @id @default(uuid())
+  patientId    String
+  checkInId    String?
+  severity     AlertSeverity
+  message      String
+  isResolved   Boolean       @default(false)
+  resolvedById String?
+  resolvedAt   DateTime?
+  resolutionNote String?
+  createdAt    DateTime      @default(now())
 
-  patient Patient @relation(fields: [patientId], references: [id])
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  checkIn    CheckIn? @relation(fields: [checkInId], references: [id])
+  resolvedBy Staff?   @relation("AlertResolutions", fields: [resolvedById], references: [id])
 }
 
 model CareTeamAssignment {

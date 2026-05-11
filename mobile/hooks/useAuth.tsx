@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { useRouter } from 'expo-router';
 import { authAPI } from '../services/api';
 
 interface User {
   id: string;
   email: string;
-  role: string;
+  role: 'PATIENT' | 'NURSE' | 'DOCTOR';
   profileId: string;
   firstName: string;
   lastName: string;
@@ -15,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
 }
@@ -24,7 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   isLoading: true,
-  login: async () => {},
+  login: async () => { throw new Error('Not initialized'); },
   logout: async () => {},
   updateUser: async () => {},
 });
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     loadStoredAuth();
@@ -48,14 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
       }
-    } catch (error) {
-      console.log('Error loading auth:', error);
+    } catch {
+      // SecureStore unavailable
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await authAPI.login(email, password);
     const { token: newToken, user: newUser } = response.data;
 
@@ -64,6 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setToken(newToken);
     setUser(newUser);
+
+    if (newUser.role === 'PATIENT') {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/(staff-tabs)');
+    }
+
+    return newUser;
   };
 
   const logout = async () => {
@@ -71,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.deleteItemAsync('auth_user');
     setToken(null);
     setUser(null);
+    router.replace('/login');
   };
 
   const updateUser = async (updates: Partial<User>) => {

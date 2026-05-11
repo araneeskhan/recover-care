@@ -1,4 +1,4 @@
-import { PrismaClient, Role, StaffRole } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding RecoverCare database...');
 
-  // Clean existing data
   await prisma.woundPhoto.deleteMany();
   await prisma.medicationLog.deleteMany();
   await prisma.alert.deleteMany();
@@ -21,34 +20,16 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // Create patient user - Sarah Chen
   const patientUser = await prisma.user.create({
-    data: {
-      email: 'sarah.chen@email.com',
-      password: hashedPassword,
-      role: Role.PATIENT,
-    },
+    data: { email: 'sarah.chen@email.com', password: hashedPassword, role: 'PATIENT' as any },
   });
-
-  // Create doctor user - Dr. Aarav Patel
   const doctorUser = await prisma.user.create({
-    data: {
-      email: 'dr.patel@mercygeneral.com',
-      password: hashedPassword,
-      role: Role.DOCTOR,
-    },
+    data: { email: 'dr.patel@mercygeneral.com', password: hashedPassword, role: 'DOCTOR' as any },
   });
-
-  // Create nurse user - Émilie Laurent
   const nurseUser = await prisma.user.create({
-    data: {
-      email: 'emilie.laurent@mercygeneral.com',
-      password: hashedPassword,
-      role: Role.NURSE,
-    },
+    data: { email: 'emilie.laurent@mercygeneral.com', password: hashedPassword, role: 'NURSE' as any },
   });
 
-  // Create Patient profile
   const patient = await prisma.patient.create({
     data: {
       userId: patientUser.id,
@@ -69,14 +50,16 @@ async function main() {
     },
   });
 
-  // Create Staff profiles
   const doctor = await prisma.staff.create({
     data: {
       userId: doctorUser.id,
       firstName: 'Aarav',
       lastName: 'Patel',
-      staffRole: StaffRole.SURGEON,
+      staffRole: 'SURGEON' as any,
       specialty: 'General Surgery',
+      department: 'Surgery',
+      licenseNumber: 'MD-44821-NY',
+      phone: '+1 (555) 100-2000',
     },
   });
 
@@ -85,12 +68,14 @@ async function main() {
       userId: nurseUser.id,
       firstName: 'Émilie',
       lastName: 'Laurent',
-      staffRole: StaffRole.NURSE,
+      staffRole: 'NURSE' as any,
       specialty: 'Post-op Care',
+      department: 'Surgical Recovery',
+      licenseNumber: 'RN-98234-NY',
+      phone: '+1 (555) 100-3000',
     },
   });
 
-  // Assign care team
   await prisma.careTeamAssignment.createMany({
     data: [
       { patientId: patient.id, staffId: doctor.id },
@@ -98,159 +83,124 @@ async function main() {
     ],
   });
 
-  // Create Medications
+  // Medications
   const now = new Date();
-  const amoxicillinNext = new Date(now);
-  amoxicillinNext.setHours(14, 0, 0, 0);
+  const amoxNext = new Date(now); amoxNext.setHours(14, 0, 0, 0);
 
-  const amoxicillin = await prisma.medication.create({
+  await prisma.medication.create({
     data: {
-      patientId: patient.id,
-      name: 'Amoxicillin',
-      dosage: '500 mg',
+      patientId: patient.id, name: 'Amoxicillin', dosage: '500 mg',
       frequency: '3× daily · with food',
       instructions: 'Take with food. Complete full course.',
-      totalDoses: 21,
-      takenDoses: 8,
-      isActive: true,
-      nextDoseAt: amoxicillinNext,
+      totalDoses: 21, takenDoses: 8, isActive: true, nextDoseAt: amoxNext,
     },
   });
 
   await prisma.medication.create({
     data: {
-      patientId: patient.id,
-      name: 'Ibuprofen',
-      dosage: '400 mg',
+      patientId: patient.id, name: 'Ibuprofen', dosage: '400 mg',
       frequency: 'Every 6h as needed',
       instructions: 'Take as needed for pain. Do not exceed 4 doses per day.',
-      totalDoses: 30,
-      takenDoses: 12,
-      isActive: true,
-      nextDoseAt: null,
+      totalDoses: 30, takenDoses: 12, isActive: true,
     },
   });
 
-  const pantoprazole = await prisma.medication.create({
+  const panto = await prisma.medication.create({
     data: {
-      patientId: patient.id,
-      name: 'Pantoprazole',
-      dosage: '40 mg',
+      patientId: patient.id, name: 'Pantoprazole', dosage: '40 mg',
       frequency: 'Once daily · morning',
       instructions: 'Take in the morning before breakfast.',
-      totalDoses: 14,
-      takenDoses: 5,
-      isActive: true,
+      totalDoses: 14, takenDoses: 5, isActive: true,
       nextDoseAt: new Date(new Date().setHours(8, 0, 0, 0)),
     },
   });
 
-  // Add medication logs for Pantoprazole (taken today)
-  const todayMorning = new Date();
-  todayMorning.setHours(8, 5, 0, 0);
-  await prisma.medicationLog.create({
-    data: {
-      medicationId: pantoprazole.id,
-      takenAt: todayMorning,
-    },
-  });
+  const todayMorning = new Date(); todayMorning.setHours(8, 5, 0, 0);
+  await prisma.medicationLog.create({ data: { medicationId: panto.id, takenAt: todayMorning } });
 
-  // Create past check-ins
+  // Check-ins (4 days)
+  const checkInNotes = [
+    'First day home. Feeling groggy from anesthesia.',
+    'Better today. Able to walk around the house.',
+    'Swelling going down. Slept well.',
+    'Slept better last night. Incision area felt tight when I got out of bed but eased after walking.',
+  ];
+  const checkIns: any[] = [];
   for (let day = 1; day <= 4; day++) {
     const checkDate = new Date('2026-05-02');
     checkDate.setDate(checkDate.getDate() + day);
     checkDate.setHours(8, 0, 0, 0);
 
-    await prisma.checkIn.create({
+    const ci = await prisma.checkIn.create({
       data: {
         patientId: patient.id,
         painLevel: Math.max(1, 7 - day),
-        temperature: 36.8 + (Math.random() * 0.8),
+        temperature: parseFloat((36.8 + Math.random() * 0.8).toFixed(1)),
         symptoms: day <= 2 ? ['Fatigue', 'Swelling'] : ['Fatigue'],
-        notes: day === 1
-          ? 'First day home. Feeling groggy from anesthesia.'
-          : day === 2
-          ? 'Better today. Able to walk around the house.'
-          : day === 3
-          ? 'Swelling going down. Slept well.'
-          : 'Slept better last night. Incision area felt tight when I got out of bed but eased after walking.',
+        notes: checkInNotes[day - 1],
         mood: day <= 2 ? 'fair' : 'good',
+        staffNotes: day === 2 ? 'Patient progressing well. Continue current pain management.' : null,
         createdAt: checkDate,
       },
     });
+    checkIns.push(ci);
   }
 
-  // Create Messages with Nurse Émilie
-  const today = new Date();
-  today.setHours(8, 2, 0, 0);
+  // Alerts (resolved + active)
+  await prisma.alert.create({
+    data: {
+      patientId: patient.id,
+      checkInId: checkIns[0].id,
+      severity: 'HIGH' as any,
+      message: '⚠️ HIGH: Patient reports severe pain level 6/10. Review pain management protocol.',
+      isResolved: true,
+      resolvedById: nurse.id,
+      resolvedAt: new Date('2026-05-04T10:30:00'),
+      resolutionNote: 'Patient advised to increase ibuprofen frequency and rest. Will monitor.',
+    },
+  });
 
-  const messageData = [
-    {
-      content: 'Good morning, Sarah! How are you feeling today?',
-      senderId: nurse.id,
-      senderType: Role.NURSE,
-      time: new Date(new Date(today).setHours(8, 2, 0, 0)),
-      isRead: true,
+  await prisma.alert.create({
+    data: {
+      patientId: patient.id,
+      checkInId: checkIns[1].id,
+      severity: 'MEDIUM' as any,
+      message: '📋 MEDIUM: Patient reports 2 symptoms: Fatigue, Swelling. Increased monitoring recommended.',
+      isResolved: false,
     },
-    {
-      content: 'Morning Émilie. Pain is around a 3 — much better than yesterday.',
-      senderId: patient.id,
-      senderType: Role.PATIENT,
-      time: new Date(new Date(today).setHours(8, 14, 0, 0)),
-      isRead: true,
-    },
-    {
-      content: "That's wonderful progress 💚 Are you keeping up with the walking exercises?",
-      senderId: nurse.id,
-      senderType: Role.NURSE,
-      time: new Date(new Date(today).setHours(8, 15, 0, 0)),
-      isRead: true,
-    },
-    {
-      content: 'Yes, two short walks already. Incision looks a bit pink near the top — should I be worried?',
-      senderId: patient.id,
-      senderType: Role.PATIENT,
-      time: new Date(new Date(today).setHours(8, 22, 0, 0)),
-      isRead: true,
-    },
-    {
-      content: "Some pinkness is normal. Please send a photo through the secure upload and I'll review with Dr. Patel before noon.",
-      senderId: nurse.id,
-      senderType: Role.NURSE,
-      time: new Date(new Date(today).setHours(8, 24, 0, 0)),
-      isRead: true,
-    },
+  });
+
+  // Messages
+  const today = new Date();
+  const msgData = [
+    { content: 'Good morning, Sarah! How are you feeling today?', senderId: nurse.id, senderType: 'NURSE', hrs: 8, min: 2, isRead: true },
+    { content: 'Morning Émilie. Pain is around a 3 — much better than yesterday.', senderId: patient.id, senderType: 'PATIENT', hrs: 8, min: 14, isRead: true },
+    { content: "That's wonderful progress 💚 Are you keeping up with the walking exercises?", senderId: nurse.id, senderType: 'NURSE', hrs: 8, min: 15, isRead: true },
+    { content: 'Yes, two short walks already. Incision looks a bit pink near the top — should I be worried?', senderId: patient.id, senderType: 'PATIENT', hrs: 8, min: 22, isRead: true },
+    { content: "Some pinkness is normal. Please send a photo through the secure upload and I'll review with Dr. Patel before noon.", senderId: nurse.id, senderType: 'NURSE', hrs: 8, min: 24, isRead: false },
   ];
 
-  for (const msg of messageData) {
+  for (const m of msgData) {
+    const t = new Date(today);
+    t.setHours(m.hrs, m.min, 0, 0);
     await prisma.message.create({
       data: {
-        patientId: patient.id,
-        staffId: nurse.id,
-        content: msg.content,
-        senderId: msg.senderId,
-        senderType: msg.senderType,
-        isRead: msg.isRead,
-        createdAt: msg.time,
+        patientId: patient.id, staffId: nurse.id,
+        content: m.content, senderId: m.senderId,
+        senderType: m.senderType as any,
+        isRead: m.isRead, createdAt: t,
       },
     });
   }
 
-  // Create Appointments
+  // Appointments
   const fridayDate = new Date();
-  // Find next Friday
-  const daysUntilFriday = (5 - fridayDate.getDay() + 7) % 7 || 7;
-  fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
+  const daysToFriday = (5 - fridayDate.getDay() + 7) % 7 || 7;
+  fridayDate.setDate(fridayDate.getDate() + daysToFriday);
   fridayDate.setHours(10, 0, 0, 0);
 
   await prisma.appointment.create({
-    data: {
-      patientId: patient.id,
-      title: 'Call with Dr. Patel',
-      description: 'Post-op review · 15 min',
-      dateTime: fridayDate,
-      duration: 15,
-    },
+    data: { patientId: patient.id, title: 'Call with Dr. Patel', description: 'Post-op review · 15 min', dateTime: fridayDate, duration: 15 },
   });
 
   const followUpDate = new Date();
@@ -258,49 +208,32 @@ async function main() {
   followUpDate.setHours(14, 0, 0, 0);
 
   await prisma.appointment.create({
-    data: {
-      patientId: patient.id,
-      title: 'Follow-up Visit',
-      description: 'In-person checkup at Mercy General',
-      dateTime: followUpDate,
-      duration: 30,
-    },
+    data: { patientId: patient.id, title: 'Follow-up Visit', description: 'In-person checkup at Mercy General', dateTime: followUpDate, duration: 30 },
   });
 
-  // Create Wound Photos
+  // Wound Photos
   for (let day = 1; day <= 4; day++) {
     const photoDate = new Date('2026-05-02');
     photoDate.setDate(photoDate.getDate() + day);
     photoDate.setHours(9, 0, 0, 0);
 
+    const captions = [
+      'Day 1 post-op — bandage just removed, slight redness around incision',
+      'Day 2 — swelling going down, cleaned with saline',
+      'Day 3 — looking much better, no discharge',
+      'Day 4 — healing nicely, pinkness fading',
+    ];
     await prisma.woundPhoto.create({
-      data: {
-        patientId: patient.id,
-        photoUri: `local://wound_day_${day}.jpg`,
-        caption: day === 1
-          ? 'Day 1 post-op — bandage just removed, slight redness around incision'
-          : day === 2
-          ? 'Day 2 — swelling going down, cleaned with saline'
-          : day === 3
-          ? 'Day 3 — looking much better, no discharge'
-          : 'Day 4 — healing nicely, pinkness fading',
-        createdAt: photoDate,
-      },
+      data: { patientId: patient.id, photoUri: `local://wound_day_${day}.jpg`, caption: captions[day - 1], createdAt: photoDate },
     });
   }
 
-  console.log('✅ Seed data created successfully!');
-  console.log(`   Patient: Sarah Chen (${patientUser.email})`);
-  console.log(`   Doctor: Dr. Aarav Patel (${doctorUser.email})`);
-  console.log(`   Nurse: Émilie Laurent (${nurseUser.email})`);
-  console.log(`   Password for all: password123`);
+  console.log('✅ Seed data created!');
+  console.log('   Patient:  sarah.chen@email.com         / password123');
+  console.log('   Doctor:   dr.patel@mercygeneral.com    / password123');
+  console.log('   Nurse:    emilie.laurent@mercygeneral.com / password123');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error('❌ Seed failed:', e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });

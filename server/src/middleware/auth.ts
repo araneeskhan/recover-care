@@ -25,3 +25,17 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
+
+export const requireRole = (...roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.userRole) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    if (!roles.includes(req.userRole)) {
+      res.status(403).json({ error: `Access denied. Required role: ${roles.join(' or ')}` });
+      return;
+    }
+    next();
+  };
+};

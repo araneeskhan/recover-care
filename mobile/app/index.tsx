@@ -10,10 +10,12 @@ export default function Index() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (user) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.role === 'PATIENT') {
         router.replace('/(tabs)');
       } else {
-        router.replace('/login');
+        router.replace('/(staff-tabs)');
       }
     }
   }, [isLoading, user]);
@@ -26,10 +28,5 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.primary.navy,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary.navy },
 });

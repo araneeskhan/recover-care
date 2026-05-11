@@ -1,23 +1,16 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/messages/conversations - List all conversations
-router.get('/conversations', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/messages/conversations - Patient: list all conversations
+router.get('/conversations', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
-
-    // Get unique staff members the patient has conversations with
     const careTeam = await prisma.careTeamAssignment.findMany({
       where: { patientId: patient.id },
       include: { staff: true },
@@ -26,27 +19,13 @@ router.get('/conversations', authenticate, async (req: AuthRequest, res: Respons
     const conversations = await Promise.all(
       careTeam.map(async (assignment) => {
         const lastMessage = await prisma.message.findFirst({
-          where: {
-            patientId: patient.id,
-            staffId: assignment.staffId,
-          },
+          where: { patientId: patient.id, staffId: assignment.staffId },
           orderBy: { createdAt: 'desc' },
         });
-
         const unreadCount = await prisma.message.count({
-          where: {
-            patientId: patient.id,
-            staffId: assignment.staffId,
-            senderType: { not: 'PATIENT' },
-            isRead: false,
-          },
+          where: { patientId: patient.id, staffId: assignment.staffId, senderType: { not: 'PATIENT' }, isRead: false },
         });
-
-        return {
-          staff: assignment.staff,
-          lastMessage,
-          unreadCount,
-        };
+        return { staff: assignment.staff, lastMessage, unreadCount };
       })
     );
 
@@ -57,41 +36,25 @@ router.get('/conversations', authenticate, async (req: AuthRequest, res: Respons
   }
 });
 
-// GET /api/messages/:staffId - Get messages in a conversation
-router.get('/:staffId', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/messages/:staffId - Patient: get conversation thread
+router.get('/:staffId', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
-
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
     const { staffId } = req.params;
 
     const messages = await prisma.message.findMany({
-      where: {
-        patientId: patient.id,
-        staffId,
-      },
+      where: { patientId: patient.id, staffId },
       orderBy: { createdAt: 'asc' },
     });
 
-    // Mark all received messages as read
     await prisma.message.updateMany({
-      where: {
-        patientId: patient.id,
-        staffId,
-        senderType: { not: 'PATIENT' },
-        isRead: false,
-      },
+      where: { patientId: patient.id, staffId, senderType: { not: 'PATIENT' }, isRead: false },
       data: { isRead: true },
     });
 
     const staff = await prisma.staff.findUnique({ where: { id: staffId } });
-
     res.json({ messages, staff });
   } catch (error) {
     console.error('Get messages error:', error);
@@ -99,33 +62,20 @@ router.get('/:staffId', authenticate, async (req: AuthRequest, res: Response): P
   }
 });
 
-// POST /api/messages - Send a message
-router.post('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/messages - Patient: send message to staff
+router.post('/', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: req.userId },
-    });
-
-    if (!patient) {
-      res.status(404).json({ error: 'Patient not found' });
-      return;
-    }
+    const patient = await prisma.patient.findFirst({ where: { userId: req.userId } });
+    if (!patient) { res.status(404).json({ error: 'Patient not found' }); return; }
 
     const { staffId, content } = req.body;
-
-    if (!staffId || !content) {
+    if (!staffId || !content?.trim()) {
       res.status(400).json({ error: 'staffId and content are required' });
       return;
     }
 
     const message = await prisma.message.create({
-      data: {
-        patientId: patient.id,
-        staffId,
-        content,
-        senderId: patient.id,
-        senderType: 'PATIENT',
-      },
+      data: { patientId: patient.id, staffId, content: content.trim(), senderId: patient.id, senderType: 'PATIENT' },
     });
 
     res.status(201).json(message);
