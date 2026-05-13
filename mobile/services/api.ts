@@ -64,6 +64,7 @@ export const patientAPI = {
   }) => api.put('/patients/me', data),
   getReport: () => api.get('/patients/me/report'),
   getAlerts: () => api.get('/patients/me/alerts'),
+  sendSOS: (reason?: string) => api.post('/patients/me/sos', { reason }),
 };
 
 // ─── Check-ins ───────────────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ export const staffAPI = {
   }) => api.post(`/staff/patients/${patientId}/appointments`, data),
   addCheckInNote: (checkInId: string, staffNotes: string) =>
     api.put(`/staff/checkins/${checkInId}/notes`, { staffNotes }),
+  getAnalytics: () => api.get('/staff/analytics'),
 };
 
 export default api;

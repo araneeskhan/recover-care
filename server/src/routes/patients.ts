@@ -355,4 +355,42 @@ router.get('/me/report', authenticate, requireRole('PATIENT'), async (req: AuthR
   }
 });
 
+// POST /api/patients/me/sos - Trigger an emergency SOS alert to care team
+router.post('/me/sos', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const patient = await prisma.patient.findFirst({
+      where: { userId: req.userId },
+      include: { careTeam: { include: { staff: true } } },
+    });
+
+    if (!patient) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
+    const { reason } = req.body;
+
+    const alert = await prisma.alert.create({
+      data: {
+        patientId: patient.id,
+        severity: 'CRITICAL',
+        message: reason
+          ? `🚨 SOS Emergency: ${reason}`
+          : `🚨 SOS Emergency triggered by ${patient.firstName} ${patient.lastName}. Immediate attention required.`,
+        isResolved: false,
+      },
+    });
+
+    res.json({
+      success: true,
+      alertId: alert.id,
+      notifiedStaff: patient.careTeam.map(ct => `${ct.staff.firstName} ${ct.staff.lastName}`),
+      message: 'Emergency alert sent to your care team.',
+    });
+  } catch (error) {
+    console.error('SOS error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

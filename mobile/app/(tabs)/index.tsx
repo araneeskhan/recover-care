@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Modal, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -58,8 +58,8 @@ const QUICK_ACTIONS = [
   { label: 'SOS', icon: 'alert-circle', bg: Colors.semantic.errorLight, color: Colors.semantic.error, sos: true },
   { label: 'Wound Log', icon: 'bandage', bg: 'rgba(142,68,173,0.1)', color: '#8E44AD', route: '/wound-journal' },
   { label: 'Report', icon: 'document-text', bg: 'rgba(52,152,219,0.1)', color: '#3498DB', route: '/health-report' },
-  { label: 'Symptoms', icon: 'book', bg: 'rgba(39,174,96,0.1)', color: '#27AE60', route: '/symptom-glossary' },
-  { label: 'Resources', icon: 'library', bg: 'rgba(26,158,143,0.06)', color: Colors.primary.teal, route: '/resources' },
+  { label: 'AI Triage', icon: 'medkit', bg: 'rgba(231,76,60,0.1)', color: '#E74C3C', route: '/symptom-triage' },
+  { label: 'Wellness', icon: 'heart-circle', bg: 'rgba(142,68,173,0.1)', color: '#8E44AD', route: '/wellness' },
 ];
 
 export default function HomeScreen() {
@@ -67,6 +67,20 @@ export default function HomeScreen() {
   const router = useRouter();
   const [d, setD] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sosModal, setSosModal] = useState<'idle' | 'confirm' | 'sending' | 'sent'>('idle');
+  const [sosStaff, setSosStaff] = useState<string[]>([]);
+
+  const triggerSOS = async () => {
+    setSosModal('sending');
+    try {
+      const r = await patientAPI.sendSOS();
+      setSosStaff(r.data.notifiedStaff || []);
+      setSosModal('sent');
+    } catch {
+      setSosStaff([]);
+      setSosModal('sent');
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try { const r = await patientAPI.getDashboard(); setD(r.data); }
@@ -96,6 +110,66 @@ export default function HomeScreen() {
   );
 
   return (
+    <>
+    {/* SOS Modal */}
+    <Modal visible={sosModal !== 'idle'} transparent animationType="fade" onRequestClose={() => sosModal !== 'sending' && setSosModal('idle')}>
+      <View style={s.sosOverlay}>
+        <View style={s.sosSheet}>
+          {sosModal === 'confirm' && (
+            <>
+              <View style={s.sosPulse}><Ionicons name="alert-circle" size={48} color="#E74C3C" /></View>
+              <Text style={s.sosTitle}>Emergency SOS</Text>
+              <Text style={s.sosSub}>This will immediately alert your care team and send them your status. Use only in a medical emergency.</Text>
+              <TouchableOpacity style={s.sosConfirmBtn} onPress={triggerSOS} activeOpacity={0.85}>
+                <Ionicons name="alert-circle" size={20} color="#FFF" />
+                <Text style={s.sosConfirmText}>Alert My Care Team Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.sosCancelBtn} onPress={() => setSosModal('idle')}>
+                <Text style={s.sosCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.sosCallBtn} onPress={() => Linking.openURL('tel:911')}>
+                <Ionicons name="call" size={16} color={Colors.semantic.error} />
+                <Text style={s.sosCallText}>Call 911 instead</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {sosModal === 'sending' && (
+            <>
+              <ActivityIndicator size="large" color={Colors.semantic.error} style={{ marginBottom: 16 }} />
+              <Text style={s.sosTitle}>Sending Alert…</Text>
+              <Text style={s.sosSub}>Notifying your care team right now.</Text>
+            </>
+          )}
+          {sosModal === 'sent' && (
+            <>
+              <View style={[s.sosPulse, { backgroundColor: Colors.semantic.successLight }]}>
+                <Ionicons name="checkmark-circle" size={48} color={Colors.semantic.success} />
+              </View>
+              <Text style={[s.sosTitle, { color: Colors.semantic.success }]}>Alert Sent!</Text>
+              <Text style={s.sosSub}>Your care team has been notified and will respond shortly.</Text>
+              {sosStaff.length > 0 && (
+                <View style={s.sosStaffList}>
+                  {sosStaff.map((name, i) => (
+                    <View key={i} style={s.sosStaffRow}>
+                      <Ionicons name="person-circle" size={18} color={Colors.primary.teal} />
+                      <Text style={s.sosStaffName}>{name}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              <TouchableOpacity style={s.sosDoneBtn} onPress={() => setSosModal('idle')}>
+                <Text style={s.sosDoneText}>Done</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.sosCallBtn} onPress={() => Linking.openURL('tel:911')}>
+                <Ionicons name="call" size={16} color={Colors.semantic.error} />
+                <Text style={s.sosCallText}>Still need 911?</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+
     <ScrollView style={s.container} showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary.teal}/>}>
 
@@ -170,9 +244,7 @@ export default function HomeScreen() {
           <TouchableOpacity key={i} style={s.quickCard}
             onPress={() => {
               if (qa.sos) {
-                Alert.alert('🚨 Emergency SOS','This will call emergency services. Are you sure?',[
-                  {text:'Cancel',style:'cancel'},{text:'Call 911',style:'destructive',onPress:()=>Linking.openURL('tel:911')}
-                ]);
+                setSosModal('confirm');
               } else if (qa.route) {
                 router.push(qa.route as any);
               }
@@ -292,6 +364,7 @@ export default function HomeScreen() {
 
       <View style={{height:32}}/>
     </ScrollView>
+    </>
   );
 }
 
@@ -351,4 +424,21 @@ const s = StyleSheet.create({
   mileTitle:{fontSize:12,fontWeight:'700',color:Colors.text.primary,marginTop:8,textAlign:'center',lineHeight:17},
   mileBadge:{paddingHorizontal:10,paddingVertical:4,borderRadius:8,marginTop:8},
   mileBadgeText:{fontSize:11,fontWeight:'600',color:Colors.text.secondary},
+  // SOS Modal
+  sosOverlay:{flex:1,backgroundColor:'rgba(0,0,0,0.6)',justifyContent:'center',alignItems:'center',padding:24},
+  sosSheet:{backgroundColor:'#FFF',borderRadius:24,padding:28,width:'100%',alignItems:'center',...Shadow.lg},
+  sosPulse:{width:88,height:88,borderRadius:44,backgroundColor:'rgba(231,76,60,0.1)',justifyContent:'center',alignItems:'center',marginBottom:16},
+  sosTitle:{fontSize:22,fontWeight:'800',color:Colors.text.primary,marginBottom:8,textAlign:'center'},
+  sosSub:{fontSize:14,color:Colors.text.secondary,textAlign:'center',lineHeight:20,marginBottom:24},
+  sosConfirmBtn:{backgroundColor:Colors.semantic.error,flexDirection:'row',alignItems:'center',gap:8,paddingVertical:16,paddingHorizontal:28,borderRadius:16,width:'100%',justifyContent:'center'},
+  sosConfirmText:{color:'#FFF',fontSize:16,fontWeight:'700'},
+  sosCancelBtn:{paddingVertical:14,paddingHorizontal:28,borderRadius:16,width:'100%',alignItems:'center',marginTop:8,backgroundColor:Colors.background.primary},
+  sosCancelText:{color:Colors.text.secondary,fontSize:15,fontWeight:'600'},
+  sosCallBtn:{flexDirection:'row',alignItems:'center',gap:6,marginTop:12},
+  sosCallText:{color:Colors.semantic.error,fontSize:13,fontWeight:'600'},
+  sosDoneBtn:{backgroundColor:Colors.semantic.success,paddingVertical:16,paddingHorizontal:28,borderRadius:16,width:'100%',alignItems:'center'},
+  sosDoneText:{color:'#FFF',fontSize:16,fontWeight:'700'},
+  sosStaffList:{width:'100%',marginBottom:20,gap:8},
+  sosStaffRow:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:Colors.background.primary,padding:10,borderRadius:10},
+  sosStaffName:{fontSize:14,fontWeight:'600',color:Colors.text.primary},
 });

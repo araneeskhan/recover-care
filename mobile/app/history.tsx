@@ -1,11 +1,175 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, RefreshControl, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { checkInAPI } from '../services/api';
 import { Colors, Shadow } from '../constants/Colors';
-import Svg, { Path, Circle, Line, Text as SvgText, Rect, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Rect, Defs, LinearGradient as SvgLinearGradient, Stop, G } from 'react-native-svg';
+
+// ─── Linear Regression Engine ────────────────────────────────────────────────
+function linReg(data: { x: number; y: number }[]) {
+  const n = data.length;
+  if (n < 2) return null;
+  const sx  = data.reduce((s, d) => s + d.x, 0);
+  const sy  = data.reduce((s, d) => s + d.y, 0);
+  const sxy = data.reduce((s, d) => s + d.x * d.y, 0);
+  const sx2 = data.reduce((s, d) => s + d.x * d.x, 0);
+  const denom = n * sx2 - sx * sx;
+  if (denom === 0) return null;
+  const m = (n * sxy - sx * sy) / denom;
+  const b = (sy - m * sx) / n;
+  const yHat = data.map(d => m * d.x + b);
+  const ssRes = data.reduce((s, d, i) => s + Math.pow(d.y - yHat[i], 2), 0);
+  const ssTot = data.reduce((s, d) => s + Math.pow(d.y - sy / n, 2), 0);
+  const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  return { slope: m, intercept: b, r2, predict: (x: number) => Math.max(0, Math.min(10, m * x + b)) };
+}
+
+function PredictionChart({ checkins }: { checkins: any[] }) {
+  if (checkins.length < 3) return (
+    <View style={{ alignItems: 'center', padding: 24 }}>
+      <Ionicons name="analytics-outline" size={32} color={Colors.text.tertiary} />
+      <Text style={{ color: Colors.text.tertiary, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+        Need at least 3 check-ins to generate a prediction.
+      </Text>
+    </View>
+  );
+
+  const points = checkins.map((c, i) => ({ x: i, y: c.painLevel }));
+  const reg = linReg(points);
+  if (!reg) return null;
+
+  const PRED_DAYS = 5;
+  const totalPts = points.length + PRED_DAYS;
+  const W = SCREEN_WIDTH - 64;
+  const H = 160;
+  const PAD = { t: 16, r: 16, b: 28, l: 32 };
+  const plotW = W - PAD.l - PAD.r;
+  const plotH = H - PAD.t - PAD.b;
+
+  const xS = (i: number) => PAD.l + (i / Math.max(1, totalPts - 1)) * plotW;
+  const yS = (v: number) => PAD.t + plotH - (v / 10) * plotH;
+
+  // Actual line
+  const actualPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xS(i)} ${yS(p.y)}`).join(' ');
+
+  // Predicted extension (dashed)
+  const predStart = points.length - 1;
+  const predPath = Array.from({ length: PRED_DAYS + 1 }, (_, i) => {
+    const xi = predStart + i;
+    const y = reg.predict(xi);
+    return `${i === 0 ? 'M' : 'L'} ${xS(xi)} ${yS(y)}`;
+  }).join(' ');
+
+  // Days until pain reaches ≤ 2
+  let daysTo2: number | null = null;
+  if (reg.slope < 0) {
+    const x = (2 - reg.intercept) / reg.slope;
+    const daysFromNow = Math.ceil(x) - (points.length - 1);
+    if (daysFromNow > 0 && daysFromNow <= 30) daysTo2 = daysFromNow;
+  }
+
+  const confidence = reg.r2 >= 0.8 ? 'High' : reg.r2 >= 0.5 ? 'Moderate' : 'Low';
+  const confColor  = reg.r2 >= 0.8 ? Colors.semantic.success : reg.r2 >= 0.5 ? Colors.semantic.warning : Colors.semantic.error;
+  const trend      = reg.slope < -0.3 ? 'Improving' : reg.slope > 0.3 ? 'Worsening' : 'Stable';
+  const trendColor = reg.slope < -0.3 ? Colors.semantic.success : reg.slope > 0.3 ? Colors.semantic.error : Colors.semantic.warning;
+
+  return (
+    <View>
+      {/* Insight row */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+        <View style={[cs.predChip, { backgroundColor: trendColor + '18' }]}>
+          <Ionicons name={reg.slope < -0.3 ? 'trending-down' : reg.slope > 0.3 ? 'trending-up' : 'remove'} size={14} color={trendColor} />
+          <Text style={[cs.predChipText, { color: trendColor }]}>{trend}</Text>
+        </View>
+        <View style={[cs.predChip, { backgroundColor: confColor + '18' }]}>
+          <Ionicons name="stats-chart" size={14} color={confColor} />
+          <Text style={[cs.predChipText, { color: confColor }]}>{confidence} confidence (R²={reg.r2.toFixed(2)})</Text>
+        </View>
+      </View>
+
+      {/* Chart */}
+      <Svg width={W} height={H}>
+        <Defs>
+          <SvgLinearGradient id="predGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={Colors.semantic.error} stopOpacity="0.15" />
+            <Stop offset="1" stopColor={Colors.semantic.error} stopOpacity="0.01" />
+          </SvgLinearGradient>
+        </Defs>
+
+        {/* Grid */}
+        {[0, 2.5, 5, 7.5, 10].map((t, i) => (
+          <G key={i}>
+            <Line x1={PAD.l} y1={yS(t)} x2={W - PAD.r} y2={yS(t)} stroke={Colors.border.light} strokeWidth={1} strokeDasharray="3,3" />
+            <SvgText x={PAD.l - 5} y={yS(t) + 4} fontSize="9" fill={Colors.text.tertiary} textAnchor="end">{t}</SvgText>
+          </G>
+        ))}
+
+        {/* Actual area fill */}
+        <Path d={`${actualPath} L ${xS(points.length - 1)} ${yS(0)} L ${xS(0)} ${yS(0)} Z`} fill="url(#predGrad)" />
+
+        {/* Actual line */}
+        <Path d={actualPath} stroke={Colors.semantic.error} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Actual dots */}
+        {points.map((p, i) => (
+          <Circle key={i} cx={xS(i)} cy={yS(p.y)} r={3.5} fill="#FFF" stroke={Colors.semantic.error} strokeWidth={2} />
+        ))}
+
+        {/* Prediction line (dashed) */}
+        <Path d={predPath} stroke={Colors.primary.teal} strokeWidth={2} fill="none" strokeDasharray="6,4" strokeLinecap="round" />
+
+        {/* Prediction dots */}
+        {Array.from({ length: PRED_DAYS + 1 }, (_, i) => {
+          const xi = predStart + i;
+          const y = reg.predict(xi);
+          return <Circle key={`p${i}`} cx={xS(xi)} cy={yS(y)} r={i === 0 ? 0 : 3} fill={Colors.primary.teal} opacity={0.7} />;
+        })}
+
+        {/* X-axis labels */}
+        {points.map((_, i) => (
+          <SvgText key={`xl${i}`} x={xS(i)} y={H - 4} fontSize="9" fill={Colors.text.tertiary} textAnchor="middle">D{i + 1}</SvgText>
+        ))}
+        {Array.from({ length: PRED_DAYS }, (_, i) => (
+          <SvgText key={`px${i}`} x={xS(predStart + 1 + i)} y={H - 4} fontSize="9" fill={Colors.primary.teal} textAnchor="middle">+{i + 1}</SvgText>
+        ))}
+      </Svg>
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <View style={{ width: 18, height: 2.5, backgroundColor: Colors.semantic.error, borderRadius: 1 }} />
+          <Text style={{ fontSize: 11, color: Colors.text.tertiary }}>Actual</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <View style={{ width: 18, height: 2, borderBottomWidth: 2, borderBottomColor: Colors.primary.teal, borderStyle: 'dashed' }} />
+          <Text style={{ fontSize: 11, color: Colors.text.tertiary }}>Predicted</Text>
+        </View>
+      </View>
+
+      {/* Prediction insight */}
+      {daysTo2 !== null && (
+        <View style={[cs.predInsight, { borderLeftColor: Colors.semantic.success }]}>
+          <Ionicons name="calendar-outline" size={16} color={Colors.semantic.success} />
+          <Text style={cs.predInsightText}>
+            <Text style={{ fontWeight: '700', color: Colors.semantic.success }}>Estimated low-pain milestone: </Text>
+            approximately {daysTo2} more day{daysTo2 !== 1 ? 's' : ''} based on your current trend.
+          </Text>
+        </View>
+      )}
+      {reg.slope > 0.3 && (
+        <View style={[cs.predInsight, { borderLeftColor: Colors.semantic.error }]}>
+          <Ionicons name="trending-up" size={16} color={Colors.semantic.error} />
+          <Text style={cs.predInsightText}>
+            <Text style={{ fontWeight: '700', color: Colors.semantic.error }}>Pain is trending upward. </Text>
+            Consider contacting your care team if this continues.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - 64;
@@ -133,11 +297,154 @@ function SymptomBar({ symptom, count, total, color }: { symptom: string; count: 
   );
 }
 
+function painColor(level: number | null): string {
+  if (level === null) return Colors.border.light;
+  if (level <= 3) return '#27AE60';
+  if (level <= 5) return '#F2994A';
+  if (level <= 7) return '#E67E22';
+  return '#E74C3C';
+}
+
+function PainCalendar({ checkins, onSelectDay }: { checkins: any[]; onSelectDay: (d: { date: string; checkin: any } | null) => void }) {
+  const today = new Date();
+
+  // Build a map: "YYYY-MM-DD" → checkin
+  const checkInMap: Record<string, any> = {};
+  checkins.forEach(c => {
+    const d = new Date(c.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!checkInMap[key] || c.painLevel > checkInMap[key].painLevel) {
+      checkInMap[key] = c;
+    }
+  });
+
+  // Build 10 weeks of days ending today, starting on Sunday
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - startDate.getDay() - 63); // 9 full weeks back
+
+  const weeks: Date[][] = [];
+  let cursor = new Date(startDate);
+  while (cursor <= today) {
+    const week: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      week.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  const CELL = 34;
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Month labels along top
+  const monthLabels: { month: string; colIndex: number }[] = [];
+  weeks.forEach((week, wi) => {
+    const first = week.find(d => d.getDate() === 1);
+    if (first) monthLabels.push({ month: months[first.getMonth()], colIndex: wi });
+  });
+
+  // Stats for this range
+  const activeDays = Object.keys(checkInMap).length;
+  const allPain = Object.values(checkInMap).map((c: any) => c.painLevel);
+  const avgPain = allPain.length ? (allPain.reduce((a, b) => a + b, 0) / allPain.length).toFixed(1) : '-';
+  const bestDay = allPain.length ? Math.min(...allPain) : null;
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+      {/* Legend */}
+      <View style={cs.calLegendRow}>
+        <Text style={cs.calLegendLabel}>Pain level</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={cs.calLegendLabel}>Low</Text>
+          {(['#27AE60', '#F2994A', '#E67E22', '#E74C3C'] as string[]).map((c, i) => (
+            <View key={i} style={[cs.calCell, { backgroundColor: c, width: 14, height: 14, borderRadius: 3 }]} />
+          ))}
+          <Text style={cs.calLegendLabel}>High</Text>
+        </View>
+        <View style={[cs.calCell, { backgroundColor: Colors.border.light, width: 14, height: 14, borderRadius: 3 }]} />
+        <Text style={cs.calLegendLabel}>None</Text>
+      </View>
+
+      {/* Grid */}
+      <View style={{ flexDirection: 'row', marginTop: 4 }}>
+        {/* Day-of-week labels */}
+        <View style={{ width: 20, gap: 2, marginTop: 18 }}>
+          {DAY_LABELS.map((d, i) => (
+            <Text key={i} style={[cs.calDayLabel, { height: CELL - 2, lineHeight: CELL - 2 }]}>{i % 2 === 0 ? d : ''}</Text>
+          ))}
+        </View>
+        {/* Weeks */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View>
+            {/* Month labels */}
+            <View style={{ flexDirection: 'row', height: 18, marginBottom: 2 }}>
+              {weeks.map((_, wi) => {
+                const ml = monthLabels.find(m => m.colIndex === wi);
+                return (
+                  <View key={wi} style={{ width: CELL }}>
+                    {ml && <Text style={cs.calMonthLabel}>{ml.month}</Text>}
+                  </View>
+                );
+              })}
+            </View>
+            {/* Day cells */}
+            {[0, 1, 2, 3, 4, 5, 6].map(dayOfWeek => (
+              <View key={dayOfWeek} style={{ flexDirection: 'row', gap: 2, marginBottom: 2 }}>
+                {weeks.map((week, wi) => {
+                  const d = week[dayOfWeek];
+                  const isFuture = d > today;
+                  if (isFuture) return <View key={wi} style={{ width: CELL - 2 }} />;
+                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  const ci = checkInMap[key];
+                  const isToday = key === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                  return (
+                    <TouchableOpacity
+                      key={wi}
+                      style={[cs.calCell, {
+                        backgroundColor: ci ? painColor(ci.painLevel) : Colors.border.light,
+                        borderWidth: isToday ? 2 : 0,
+                        borderColor: Colors.primary.teal,
+                      }]}
+                      onPress={() => ci && onSelectDay({ date: key, checkin: ci })}
+                      activeOpacity={ci ? 0.7 : 1}
+                    />
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Stats row */}
+      <View style={cs.calStats}>
+        <View style={cs.calStatBox}>
+          <Text style={cs.calStatVal}>{activeDays}</Text>
+          <Text style={cs.calStatLbl}>Check-in days</Text>
+        </View>
+        <View style={[cs.calStatBox, { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border.light }]}>
+          <Text style={[cs.calStatVal, { color: avgPain !== '-' && parseFloat(avgPain) > 6 ? Colors.semantic.error : Colors.semantic.success }]}>{avgPain}</Text>
+          <Text style={cs.calStatLbl}>Avg pain / 10</Text>
+        </View>
+        <View style={cs.calStatBox}>
+          <Text style={[cs.calStatVal, { color: Colors.semantic.success }]}>{bestDay ?? '-'}</Text>
+          <Text style={cs.calStatLbl}>Best pain day</Text>
+        </View>
+      </View>
+      <Text style={{ fontSize: 12, color: Colors.text.tertiary, textAlign: 'center', marginTop: 8 }}>
+        Tap a colored cell to see that day's check-in
+      </Text>
+    </View>
+  );
+}
+
 export default function HistoryScreen() {
   const router = useRouter();
   const [checkins, setCheckins] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'charts' | 'log'>('charts');
+  const [activeTab, setActiveTab] = useState<'charts' | 'log' | 'calendar'>('charts');
+  const [selectedDay, setSelectedDay] = useState<{ date: string; checkin: any } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -175,6 +482,57 @@ export default function HistoryScreen() {
 
   return (
     <View style={cs.container}>
+      {/* Day detail modal */}
+      <Modal visible={!!selectedDay} transparent animationType="slide" onRequestClose={() => setSelectedDay(null)}>
+        <TouchableOpacity style={cs.modalOverlay} activeOpacity={1} onPress={() => setSelectedDay(null)}>
+          <View style={cs.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={cs.modalHandle} />
+            {selectedDay && (() => {
+              const c = selectedDay.checkin;
+              const d = new Date(c.createdAt);
+              const moodInfo = MOOD_MAP[c.mood] || { emoji: '—', label: 'Unknown', color: Colors.text.secondary };
+              return (
+                <>
+                  <Text style={cs.modalDate}>{d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+                  <View style={cs.modalRow}>
+                    <View style={[cs.modalStatBox, { borderLeftWidth: 4, borderLeftColor: painColor(c.painLevel) }]}>
+                      <Text style={cs.modalStatLbl}>PAIN</Text>
+                      <Text style={[cs.modalStatVal, { color: painColor(c.painLevel) }]}>{c.painLevel}<Text style={{ fontSize: 14 }}>/10</Text></Text>
+                    </View>
+                    {c.temperature && (
+                      <View style={[cs.modalStatBox, { borderLeftWidth: 4, borderLeftColor: Colors.semantic.warning }]}>
+                        <Text style={cs.modalStatLbl}>TEMP</Text>
+                        <Text style={[cs.modalStatVal, { color: Colors.semantic.warning }]}>{c.temperature.toFixed(1)}<Text style={{ fontSize: 14 }}>°C</Text></Text>
+                      </View>
+                    )}
+                    <View style={[cs.modalStatBox, { borderLeftWidth: 4, borderLeftColor: moodInfo.color }]}>
+                      <Text style={cs.modalStatLbl}>MOOD</Text>
+                      <Text style={{ fontSize: 28 }}>{moodInfo.emoji}</Text>
+                    </View>
+                  </View>
+                  {c.symptoms?.length > 0 && (
+                    <View>
+                      <Text style={cs.modalSection}>Symptoms reported</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {c.symptoms.map((s: string) => (
+                          <View key={s} style={cs.modalChip}><Text style={cs.modalChipText}>{s}</Text></View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  {c.notes && (
+                    <View style={{ marginTop: 14 }}>
+                      <Text style={cs.modalSection}>Notes</Text>
+                      <Text style={cs.modalNotes}>{c.notes}</Text>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Header */}
       <View style={cs.header}>
         <TouchableOpacity onPress={() => router.back()} style={cs.backBtn}>
@@ -191,6 +549,10 @@ export default function HistoryScreen() {
         <TouchableOpacity style={[cs.tab, activeTab === 'charts' && cs.tabActive]} onPress={() => setActiveTab('charts')}>
           <Ionicons name="analytics" size={16} color={activeTab === 'charts' ? Colors.primary.teal : Colors.text.secondary} />
           <Text style={[cs.tabText, activeTab === 'charts' && cs.tabTextActive]}>Charts</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[cs.tab, activeTab === 'calendar' && cs.tabActive]} onPress={() => setActiveTab('calendar')}>
+          <Ionicons name="calendar" size={16} color={activeTab === 'calendar' ? Colors.primary.teal : Colors.text.secondary} />
+          <Text style={[cs.tabText, activeTab === 'calendar' && cs.tabTextActive]}>Calendar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[cs.tab, activeTab === 'log' && cs.tabActive]} onPress={() => setActiveTab('log')}>
           <Ionicons name="list" size={16} color={activeTab === 'log' ? Colors.primary.teal : Colors.text.secondary} />
@@ -245,6 +607,17 @@ export default function HistoryScreen() {
               />
             </View>
 
+            {/* Trajectory Prediction */}
+            <View style={cs.chartCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={cs.chartLabel}>Recovery Trajectory</Text>
+                <View style={{ backgroundColor: Colors.primary.teal + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, color: Colors.primary.teal, fontWeight: '700' }}>AI PREDICT</Text>
+                </View>
+              </View>
+              <PredictionChart checkins={checkins} />
+            </View>
+
             {/* Temperature Chart */}
             {tempData.length > 0 && (
               <View style={cs.chartCard}>
@@ -292,6 +665,9 @@ export default function HistoryScreen() {
               </View>
             )}
           </>
+        ) : activeTab === 'calendar' ? (
+          // Pain Heatmap Calendar
+          <PainCalendar checkins={checkins} onSelectDay={setSelectedDay} />
         ) : (
           // History Log
           <>
@@ -388,4 +764,32 @@ const cs = StyleSheet.create({
   logSymChip: { backgroundColor: Colors.background.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   logSymText: { fontSize: 11, fontWeight: '500', color: Colors.text.secondary },
   logNotes: { fontSize: 13, color: Colors.text.secondary, fontStyle: 'italic', lineHeight: 18 },
+  // Prediction
+  predChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  predChipText: { fontSize: 12, fontWeight: '600' },
+  predInsight: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 12, borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 6 },
+  predInsightText: { flex: 1, fontSize: 13, color: Colors.text.secondary, lineHeight: 19 },
+  // Calendar
+  calLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  calLegendLabel: { fontSize: 11, color: Colors.text.tertiary, fontWeight: '500' },
+  calCell: { width: 32, height: 32, borderRadius: 6 },
+  calDayLabel: { fontSize: 9, color: Colors.text.tertiary, fontWeight: '600', textAlign: 'center' },
+  calMonthLabel: { fontSize: 10, color: Colors.text.tertiary, fontWeight: '600' },
+  calStats: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginTop: 16, ...Shadow.sm },
+  calStatBox: { flex: 1, alignItems: 'center', paddingVertical: 16 },
+  calStatVal: { fontSize: 24, fontWeight: '800', color: Colors.text.primary },
+  calStatLbl: { fontSize: 11, color: Colors.text.tertiary, fontWeight: '500', marginTop: 2, textAlign: 'center' },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, backgroundColor: Colors.border.medium, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalDate: { fontSize: 18, fontWeight: '700', color: Colors.text.primary, marginBottom: 16 },
+  modalRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  modalStatBox: { flex: 1, backgroundColor: Colors.background.primary, borderRadius: 12, padding: 14 },
+  modalStatLbl: { fontSize: 10, fontWeight: '700', color: Colors.text.tertiary, letterSpacing: 0.8, marginBottom: 4 },
+  modalStatVal: { fontSize: 26, fontWeight: '800', color: Colors.text.primary },
+  modalSection: { fontSize: 13, fontWeight: '700', color: Colors.text.secondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  modalChip: { backgroundColor: Colors.background.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  modalChipText: { fontSize: 13, fontWeight: '500', color: Colors.text.primary },
+  modalNotes: { fontSize: 14, color: Colors.text.secondary, lineHeight: 20, fontStyle: 'italic' },
 });

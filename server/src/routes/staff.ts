@@ -524,4 +524,123 @@ router.put('/checkins/:checkInId/notes', authenticate, requireRole('NURSE', 'DOC
   }
 });
 
+// GET /api/staff/analytics - Risk stratification & population insights
+router.get('/analytics', authenticate, requireRole('NURSE', 'DOCTOR'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const staff = await prisma.staff.findFirst({ where: { userId: req.userId } });
+    if (!staff) { res.status(404).json({ error: 'Staff profile not found' }); return; }
+
+    const assignments = await prisma.careTeamAssignment.findMany({
+      where: { staffId: staff.id },
+      include: { patient: true },
+    });
+    const patientIds = assignments.map(a => a.patientId);
+    if (patientIds.length === 0) { res.json({ patients: [], population: {} }); return; }
+
+    const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const [allCheckIns, allAlerts, allMeds] = await Promise.all([
+      prisma.checkIn.findMany({ where: { patientId: { in: patientIds }, createdAt: { gte: sevenDaysAgo } }, orderBy: { createdAt: 'asc' } }),
+      prisma.alert.findMany({ where: { patientId: { in: patientIds }, createdAt: { gte: sevenDaysAgo } } }),
+      prisma.medication.findMany({ where: { patientId: { in: patientIds }, isActive: true } }),
+    ]);
+
+    // Per-patient risk scoring
+    const patientScores = assignments.map(({ patient }) => {
+      const checkIns = allCheckIns.filter(c => c.patientId === patient.id);
+      const alerts   = allAlerts.filter(a => a.patientId === patient.id);
+      const meds     = allMeds.filter(m => m.patientId === patient.id);
+
+      // Pain score (0-40): average pain last 7 days, scaled
+      const avgPain = checkIns.length > 0
+        ? checkIns.reduce((s, c) => s + c.painLevel, 0) / checkIns.length : 5;
+      const painScore = (avgPain / 10) * 40;
+
+      // Alert score (0-30): weight by severity
+      const alertScore = Math.min(30, alerts.reduce((s, a) => {
+        return s + (a.severity === 'CRITICAL' ? 10 : a.severity === 'HIGH' ? 6 : a.severity === 'MEDIUM' ? 3 : 1);
+      }, 0));
+
+      // Adherence score (0-20): lower adherence = higher risk
+      const totalPrescribed = meds.reduce((s, m) => s + m.totalDoses, 0);
+      const totalTaken = meds.reduce((s, m) => s + m.takenDoses, 0);
+      const adherence = totalPrescribed > 0 ? totalTaken / totalPrescribed : 1;
+      const adherenceScore = (1 - adherence) * 20;
+
+      // Check-in consistency (0-10): missed days in last 7
+      const checkInDays = new Set(checkIns.map(c => new Date(c.createdAt).toDateString())).size;
+      const daysSinceSurgery = Math.max(1, Math.ceil((Date.now() - new Date(patient.surgeryDate).getTime()) / 86400000));
+      const expectedDays = Math.min(7, daysSinceSurgery);
+      const consistencyScore = ((expectedDays - checkInDays) / Math.max(1, expectedDays)) * 10;
+
+      const totalRisk = Math.round(Math.min(100, painScore + alertScore + adherenceScore + consistencyScore));
+
+      // Pain trend: slope of last 5 check-ins
+      const last5 = checkIns.slice(-5);
+      let painTrend = 0;
+      if (last5.length >= 2) {
+        painTrend = (last5[last5.length - 1].painLevel - last5[0].painLevel) / (last5.length - 1);
+      }
+
+      // Most recent check-in
+      const latest = checkIns[checkIns.length - 1];
+      const surgeryDate = new Date(patient.surgeryDate);
+      const currentDay = Math.max(1, Math.ceil((Date.now() - surgeryDate.getTime()) / 86400000));
+
+      return {
+        id: patient.id,
+        name: `${patient.firstName} ${patient.lastName}`,
+        mrn: patient.mrn,
+        surgeryType: patient.surgeryType,
+        currentDay: Math.min(currentDay, patient.recoveryDays),
+        totalDays: patient.recoveryDays,
+        riskScore: totalRisk,
+        riskBreakdown: {
+          pain: Math.round(painScore),
+          alerts: Math.round(alertScore),
+          adherence: Math.round(adherenceScore),
+          consistency: Math.round(consistencyScore),
+        },
+        avgPain: Math.round(avgPain * 10) / 10,
+        painTrend: Math.round(painTrend * 100) / 100,
+        checkInsLast7: checkIns.length,
+        activeAlerts: alerts.filter(a => !a.isResolved).length,
+        adherenceRate: Math.round(adherence * 100),
+        latestMood: latest?.mood ?? null,
+        latestPain: latest?.painLevel ?? null,
+        latestTemp: latest?.temperature ?? null,
+      };
+    });
+
+    patientScores.sort((a, b) => b.riskScore - a.riskScore);
+
+    // Population-level insights
+    const allPatientCheckins = allCheckIns;
+    const symptomCounts: Record<string, number> = {};
+    allPatientCheckins.forEach(c => (c.symptoms || []).forEach((s: string) => { symptomCounts[s] = (symptomCounts[s] || 0) + 1; }));
+    const topSymptoms = Object.entries(symptomCounts).sort(([, a], [, b]) => b - a).slice(0, 5);
+    const overallAvgPain = allPatientCheckins.length > 0
+      ? Math.round((allPatientCheckins.reduce((s, c) => s + c.painLevel, 0) / allPatientCheckins.length) * 10) / 10 : 0;
+    const checkInRate = patientIds.length > 0
+      ? Math.round((new Set(allPatientCheckins.map(c => c.patientId)).size / patientIds.length) * 100) : 0;
+    const criticalCount = allAlerts.filter(a => a.severity === 'CRITICAL' && !a.isResolved).length;
+
+    res.json({
+      patients: patientScores,
+      population: {
+        totalPatients: patientIds.length,
+        overallAvgPain,
+        checkInRate7d: checkInRate,
+        topSymptoms,
+        criticalAlerts: criticalCount,
+        highRiskPatients: patientScores.filter(p => p.riskScore >= 60).length,
+      },
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

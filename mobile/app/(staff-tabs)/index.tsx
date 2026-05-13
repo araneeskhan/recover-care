@@ -196,8 +196,8 @@ export default function StaffDashboard() {
             {[
               { label: 'All Alerts', icon: 'warning-outline', route: '/(staff-tabs)/alerts', color: Colors.semantic.error },
               { label: 'Patients', icon: 'people-outline', route: '/(staff-tabs)/patients', color: accentColor },
-              { label: 'Messages', icon: 'chatbubbles-outline', route: '/(staff-tabs)/messages', color: Colors.primary.teal },
-              { label: 'Profile', icon: 'person-circle-outline', route: '/(staff-tabs)/profile', color: Colors.neutral.darkGray },
+              { label: 'Analytics', icon: 'analytics-outline', route: '/staff-analytics', color: Colors.primary.teal },
+              { label: 'Messages', icon: 'chatbubbles-outline', route: '/(staff-tabs)/messages', color: Colors.neutral.darkGray },
             ].map((a, i) => (
               <TouchableOpacity
                 key={i}
