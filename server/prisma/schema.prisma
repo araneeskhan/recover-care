@@ -62,8 +62,10 @@ model Patient {
   appointments Appointment[]
   sentMessages     Message[]        @relation("PatientMessages")
   alerts       Alert[]
-  careTeam     CareTeamAssignment[]
-  woundPhotos  WoundPhoto[]
+  careTeam      CareTeamAssignment[]
+  woundPhotos   WoundPhoto[]
+  recoveryTasks RecoveryTask[]
+  journalEntries JournalEntry[]
 }
 
 model Staff {
@@ -187,6 +189,50 @@ model WoundPhoto {
   photoUri  String
   caption   String?
   createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+enum TaskCategory {
+  WOUND_CARE
+  MEDICATION
+  ACTIVITY
+  NUTRITION
+  FOLLOW_UP
+  MENTAL_HEALTH
+}
+
+model RecoveryTask {
+  id          String        @id @default(uuid())
+  patientId   String
+  dayNumber   Int
+  category    TaskCategory
+  title       String
+  description String?
+  isCompleted Boolean       @default(false)
+  completedAt DateTime?
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId, dayNumber])
+}
+
+model JournalEntry {
+  id              String   @id @default(uuid())
+  patientId       String
+  content         String
+  mood            String?
+  energyLevel     Int?
+  sleepHours      Float?
+  anxietyLevel    Int?
+  gratitude       String?
+  sentimentScore  Float?
+  flaggedKeywords String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   patient Patient @relation(fields: [patientId], references: [id])
 }

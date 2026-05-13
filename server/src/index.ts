@@ -10,6 +10,7 @@ import medicationRoutes from './routes/medications';
 import appointmentRoutes from './routes/appointments';
 import woundPhotoRoutes from './routes/wound-photos';
 import staffRoutes from './routes/staff';
+import taskRoutes from './routes/tasks';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/medications', medicationRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/wound-photos', woundPhotoRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

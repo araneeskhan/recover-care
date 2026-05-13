@@ -52,13 +52,13 @@ const DEMO = {
 };
 
 const QUICK_ACTIONS = [
-  { label: 'Trends', icon: 'analytics', bg: 'rgba(26,158,143,0.12)', color: Colors.primary.teal, route: '/history' },
-  { label: 'Appointments', icon: 'calendar', bg: Colors.semantic.infoLight, color: Colors.semantic.info, route: '/appointments' },
+  { label: 'Reminders', icon: 'notifications', bg: 'rgba(26,158,143,0.12)', color: Colors.primary.teal, route: '/reminders' },
+  { label: 'Care Plan', icon: 'list-circle', bg: Colors.semantic.infoLight, color: Colors.semantic.info, route: '/care-plan' },
   { label: 'Medications', icon: 'medical', bg: Colors.semantic.warningLight, color: Colors.semantic.warning, route: '/medications' },
   { label: 'SOS', icon: 'alert-circle', bg: Colors.semantic.errorLight, color: Colors.semantic.error, sos: true },
-  { label: 'Wound Log', icon: 'bandage', bg: 'rgba(142,68,173,0.1)', color: '#8E44AD', route: '/wound-journal' },
-  { label: 'Report', icon: 'document-text', bg: 'rgba(52,152,219,0.1)', color: '#3498DB', route: '/health-report' },
-  { label: 'AI Triage', icon: 'medkit', bg: 'rgba(231,76,60,0.1)', color: '#E74C3C', route: '/symptom-triage' },
+  { label: 'Drug Safety', icon: 'shield-checkmark', bg: 'rgba(231,76,60,0.1)', color: '#E74C3C', route: '/drug-interactions' },
+  { label: 'AI Triage', icon: 'medkit', bg: 'rgba(231,76,60,0.12)', color: '#C0392B', route: '/symptom-triage' },
+  { label: 'Trends', icon: 'analytics', bg: 'rgba(26,158,143,0.12)', color: Colors.primary.teal, route: '/history' },
   { label: 'Wellness', icon: 'heart-circle', bg: 'rgba(142,68,173,0.1)', color: '#8E44AD', route: '/wellness' },
 ];
 

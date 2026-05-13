@@ -100,6 +100,22 @@ export const woundPhotoAPI = {
   create: (data: { photoUri: string; caption?: string }) => api.post('/wound-photos', data),
 };
 
+// ─── Tasks & Journal ─────────────────────────────────────────────────────────
+export const taskAPI = {
+  getToday:    () => api.get('/tasks/today'),
+  getWeek:     () => api.get('/tasks/week'),
+  complete:    (id: string) => api.put(`/tasks/${id}/complete`),
+  getJournal:  () => api.get('/tasks/journal'),
+  addJournal:  (data: { content: string; mood?: string; energyLevel?: number; sleepHours?: number; anxietyLevel?: number; gratitude?: string }) =>
+    api.post('/tasks/journal', data),
+  // Staff
+  applyCareplan: (patientId: string, clearExisting = false) =>
+    api.post(`/tasks/staff/patients/${patientId}/care-plan`, { clearExisting }),
+  addTask:     (patientId: string, data: { dayNumber: number; category: string; title: string; description?: string }) =>
+    api.post(`/tasks/staff/patients/${patientId}/tasks`, data),
+  getPatientTasks: (patientId: string) => api.get(`/tasks/staff/patients/${patientId}/tasks`),
+};
+
 // ─── Staff API ───────────────────────────────────────────────────────────────
 export const staffAPI = {
   // Profile

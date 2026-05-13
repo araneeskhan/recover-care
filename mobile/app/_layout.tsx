@@ -33,6 +33,9 @@ export default function RootLayout() {
           <Stack.Screen name="health-report" options={{ headerShown: false, presentation: 'card' }} />
           <Stack.Screen name="wellness" options={{ headerShown: false, presentation: 'card' }} />
           <Stack.Screen name="symptom-triage" options={{ headerShown: false, presentation: 'card' }} />
+          <Stack.Screen name="care-plan" options={{ headerShown: false, presentation: 'card' }} />
+          <Stack.Screen name="drug-interactions" options={{ headerShown: false, presentation: 'card' }} />
+          <Stack.Screen name="reminders" options={{ headerShown: false, presentation: 'card' }} />
           {/* Staff screens */}
           <Stack.Screen name="(staff-tabs)" />
           <Stack.Screen name="staff-analytics" options={{ headerShown: false, presentation: 'card' }} />
