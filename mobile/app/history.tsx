@@ -13,10 +13,10 @@ const CHART_HEIGHT = 160;
 const CHART_PADDING = { top: 20, right: 16, bottom: 28, left: 32 };
 
 const DEMO_CHECKINS = [
-  { id: '1', painLevel: 7, temperature: 37.5, mood: 'fair', symptoms: ['Fatigue', 'Swelling'], createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
-  { id: '2', painLevel: 6, temperature: 37.3, mood: 'fair', symptoms: ['Fatigue', 'Swelling'], createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+  { id: '1', painLevel: 6, temperature: 37.4, mood: 'fair', symptoms: ['Fatigue', 'Swelling'], createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
+  { id: '2', painLevel: 5, temperature: 37.2, mood: 'fair', symptoms: ['Fatigue', 'Swelling'], createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
   { id: '3', painLevel: 4, temperature: 37.0, mood: 'good', symptoms: ['Fatigue'], createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-  { id: '4', painLevel: 3, temperature: 37.2, mood: 'good', symptoms: ['Fatigue'], createdAt: new Date(Date.now() - 1 * 86400000).toISOString() },
+  { id: '4', painLevel: 3, temperature: 36.9, mood: 'good', symptoms: ['Fatigue'], createdAt: new Date(Date.now() - 1 * 86400000).toISOString() },
 ];
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; value: number; color: string }> = {

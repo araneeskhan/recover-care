@@ -24,7 +24,7 @@ function MiniRing({ value, max, size = 48, color = Colors.primary.teal }: { valu
 
 const DEMO_REPORT = {
   patient: { firstName: 'Sarah', lastName: 'Chen', mrn: '4729-883', age: 42, surgeryType: 'Laparoscopic Cholecystectomy', surgeryDate: '2026-05-02', hospital: 'Mercy General', bloodType: 'A+', allergies: 'Penicillin' },
-  recovery: { currentDay: 5, totalDays: 14, daysRemaining: 9 },
+  recovery: { currentDay: 11, totalDays: 14, daysRemaining: 3 },
   vitalsTimeline: [
     { date: '2026-05-03', painLevel: 6, temperature: 37.4, mood: 'fair', symptoms: ['Fatigue', 'Swelling'] },
     { date: '2026-05-04', painLevel: 5, temperature: 37.2, mood: 'fair', symptoms: ['Fatigue', 'Swelling'] },
@@ -37,7 +37,7 @@ const DEMO_REPORT = {
     { name: 'Pantoprazole', dosage: '40 mg', totalDoses: 14, takenDoses: 5, isActive: true },
   ]},
   checkInStreak: 4, totalCheckIns: 4,
-  alerts: { total: 0, resolved: 0, active: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0 } },
+  alerts: { total: 3, resolved: 2, active: 1, bySeverity: { critical: 0, high: 1, medium: 1, low: 1 } },
   careTeam: [{ name: 'Aarav Patel', role: 'SURGEON', specialty: 'General Surgery' }, { name: 'Émilie Laurent', role: 'NURSE', specialty: 'Post-op Care' }],
   generatedAt: new Date().toISOString(),
 };

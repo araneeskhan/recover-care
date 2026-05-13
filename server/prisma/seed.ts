@@ -125,6 +125,7 @@ async function main() {
     'Swelling going down. Slept well.',
     'Slept better last night. Incision area felt tight when I got out of bed but eased after walking.',
   ];
+  const checkInTemps = [37.4, 37.2, 37.0, 36.9];
   const checkIns: any[] = [];
   for (let day = 1; day <= 4; day++) {
     const checkDate = new Date('2026-05-02');
@@ -135,7 +136,7 @@ async function main() {
       data: {
         patientId: patient.id,
         painLevel: Math.max(1, 7 - day),
-        temperature: parseFloat((36.8 + Math.random() * 0.8).toFixed(1)),
+        temperature: checkInTemps[day - 1],
         symptoms: day <= 2 ? ['Fatigue', 'Swelling'] : ['Fatigue'],
         notes: checkInNotes[day - 1],
         mood: day <= 2 ? 'fair' : 'good',
@@ -157,6 +158,19 @@ async function main() {
       resolvedById: nurse.id,
       resolvedAt: new Date('2026-05-04T10:30:00'),
       resolutionNote: 'Patient advised to increase ibuprofen frequency and rest. Will monitor.',
+    },
+  });
+
+  await prisma.alert.create({
+    data: {
+      patientId: patient.id,
+      checkInId: checkIns[0].id,
+      severity: 'LOW' as any,
+      message: 'ℹ️ LOW: Temperature slightly elevated at 37.4°C. Continue monitoring.',
+      isResolved: true,
+      resolvedById: nurse.id,
+      resolvedAt: new Date('2026-05-03T12:00:00'),
+      resolutionNote: 'Temperature within acceptable post-operative range. Patient advised to rest.',
     },
   });
 
@@ -209,6 +223,14 @@ async function main() {
 
   await prisma.appointment.create({
     data: { patientId: patient.id, title: 'Follow-up Visit', description: 'In-person checkup at Mercy General', dateTime: followUpDate, duration: 30 },
+  });
+
+  const labDate = new Date();
+  labDate.setDate(labDate.getDate() + 12);
+  labDate.setHours(9, 0, 0, 0);
+
+  await prisma.appointment.create({
+    data: { patientId: patient.id, title: 'Lab Work', description: 'Blood panel & wound culture', dateTime: labDate, duration: 20 },
   });
 
   // Wound Photos

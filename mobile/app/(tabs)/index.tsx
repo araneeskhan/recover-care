@@ -43,8 +43,8 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
 
 const DEMO = {
   patient: { firstName: 'Sarah' },
-  recovery: { currentDay: 5, totalDays: 14, daysRemaining: 9, isOnTrack: true },
-  vitals: { painLevel: 3, temperature: 37.2, lastCheckInTime: new Date().toISOString() },
+  recovery: { currentDay: 11, totalDays: 14, daysRemaining: 3, isOnTrack: true },
+  vitals: { painLevel: 3, temperature: 36.9, lastCheckInTime: new Date(Date.now() - 7 * 86400000).toISOString() },
   hasCheckedInToday: false,
   medications: [{ id: '1', name: 'Amoxicillin', dosage: '500mg', nextDoseAt: new Date(new Date().setHours(14,0,0,0)).toISOString() }],
   appointments: [{ id: '1', title: 'Call with Dr. Patel', description: 'Post-op review · 15 min', dateTime: new Date(Date.now() + 3*86400000).toISOString() }],
