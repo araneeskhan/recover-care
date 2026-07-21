@@ -49,6 +49,7 @@ const DEMO = {
   medications: [{ id: '1', name: 'Amoxicillin', dosage: '500mg', nextDoseAt: new Date(new Date().setHours(14,0,0,0)).toISOString() }],
   appointments: [{ id: '1', title: 'Call with Dr. Patel', description: 'Post-op review · 15 min', dateTime: new Date(Date.now() + 3*86400000).toISOString() }],
   unreadMessages: 2,
+  aiRecoveryInsight: { status: 'Improving', message: 'AI predicts a strong recovery trajectory. Your pain levels are steadily decreasing.', trendSlope: -0.8 },
 };
 
 const QUICK_ACTIONS = [
@@ -220,6 +221,28 @@ export default function HomeScreen() {
           <View style={[s.viBar, {backgroundColor: Colors.primary.teal}]} />
         </View>
       </View>
+
+      {/* AI Recovery Insight */}
+      {d.aiRecoveryInsight && d.aiRecoveryInsight.status !== 'Insufficient Data' && (
+        <View style={s.aiCard}>
+          <LinearGradient colors={['rgba(142,68,173,0.1)', 'rgba(142,68,173,0.02)']} style={s.aiGrad}>
+            <View style={s.aiRow}>
+              <View style={s.aiIconBox}>
+                <Ionicons name="sparkles" size={20} color="#8E44AD" />
+              </View>
+              <View style={{flex: 1}}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <Text style={s.aiTitle}>AI Recovery Insight</Text>
+                  <View style={[s.aiBadge, {backgroundColor: d.aiRecoveryInsight.status === 'Improving' ? Colors.semantic.successLight : d.aiRecoveryInsight.status === 'Degrading' ? Colors.semantic.errorLight : Colors.semantic.warningLight}]}>
+                    <Text style={[s.aiBadgeText, {color: d.aiRecoveryInsight.status === 'Improving' ? Colors.semantic.success : d.aiRecoveryInsight.status === 'Degrading' ? Colors.semantic.error : Colors.semantic.warning}]}>{d.aiRecoveryInsight.status}</Text>
+                  </View>
+                </View>
+                <Text style={s.aiMessage}>{d.aiRecoveryInsight.message}</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
 
       {/* CTA */}
       {!d.hasCheckedInToday && (
@@ -441,4 +464,13 @@ const s = StyleSheet.create({
   sosStaffList:{width:'100%',marginBottom:20,gap:8},
   sosStaffRow:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:Colors.background.primary,padding:10,borderRadius:10},
   sosStaffName:{fontSize:14,fontWeight:'600',color:Colors.text.primary},
+  // AI Card
+  aiCard: {marginHorizontal:16, marginTop:20, borderRadius:20, overflow:'hidden', ...Shadow.sm, borderWidth: 1, borderColor: 'rgba(142,68,173,0.15)'},
+  aiGrad: {padding:16},
+  aiRow: {flexDirection:'row', gap:12},
+  aiIconBox: {width:40, height:40, borderRadius:12, backgroundColor:'rgba(142,68,173,0.15)', justifyContent:'center', alignItems:'center'},
+  aiTitle: {fontSize:15, fontWeight:'800', color:'#8E44AD'},
+  aiBadge: {paddingHorizontal:8, paddingVertical:4, borderRadius:6},
+  aiBadgeText: {fontSize:10, fontWeight:'700'},
+  aiMessage: {fontSize:13, color:Colors.text.secondary, marginTop:6, lineHeight:18},
 });

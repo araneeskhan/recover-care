@@ -4,6 +4,7 @@ import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
+import { analyzeMessage } from '../services/aiService';
 
 // GET /api/messages/conversations - Patient: list all conversations
 router.get('/conversations', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
@@ -77,6 +78,26 @@ router.post('/', authenticate, requireRole('PATIENT'), async (req: AuthRequest, 
     const message = await prisma.message.create({
       data: { patientId: patient.id, staffId, content: content.trim(), senderId: patient.id, senderType: 'PATIENT' },
     });
+
+    // --- AI Message Triage ---
+    try {
+      const aiAnalysis = analyzeMessage(content.trim());
+      if (aiAnalysis.intent === 'URGENT') {
+        // Automatically create a HIGH priority alert based on AI triage
+        await prisma.alert.create({
+          data: {
+            patientId: patient.id,
+            severity: 'HIGH',
+            message: `🤖 AI Alert: Message flagged as URGENT (Sentiment: ${aiAnalysis.sentimentScore.toFixed(1)}). Message: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+            isResolved: false,
+          },
+        });
+        console.log(`🤖 AI flagged message from patient ${patient.id} as URGENT.`);
+      }
+    } catch (aiError) {
+      console.error('AI Triage Error:', aiError);
+      // Non-blocking, continue even if AI fails
+    }
 
     res.status(201).json(message);
   } catch (error) {

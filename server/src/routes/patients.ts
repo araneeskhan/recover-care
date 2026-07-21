@@ -4,6 +4,7 @@ import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
+import { predictRecoveryTrend } from '../services/aiService';
 
 // GET /api/patients/me - Get current patient profile
 router.get('/me', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response): Promise<void> => {
@@ -110,6 +111,26 @@ router.get('/me/dashboard', authenticate, requireRole('PATIENT'), async (req: Au
       take: 5,
     });
 
+    // --- AI Recovery Predictor ---
+    let aiRecoveryInsight = null;
+    try {
+      // Get all check-ins for the patient to analyze trend
+      const allCheckIns = await prisma.checkIn.findMany({
+        where: { patientId: patient.id },
+        orderBy: { createdAt: 'asc' },
+      });
+      
+      const trendData = allCheckIns.map(c => {
+        const checkInDate = new Date(c.createdAt);
+        const day = Math.max(1, Math.ceil((checkInDate.getTime() - surgeryDate.getTime()) / (1000 * 60 * 60 * 24)));
+        return { day, painLevel: c.painLevel };
+      });
+
+      aiRecoveryInsight = predictRecoveryTrend(trendData);
+    } catch (aiError) {
+      console.error('AI Recovery Predictor Error:', aiError);
+    }
+
     res.json({
       patient: {
         firstName: patient.firstName,
@@ -124,6 +145,7 @@ router.get('/me/dashboard', authenticate, requireRole('PATIENT'), async (req: Au
         daysRemaining: Math.max(0, patient.recoveryDays - currentDay),
         isOnTrack: !activeAlerts.some((a) => a.severity === 'CRITICAL' || a.severity === 'HIGH'),
       },
+      aiRecoveryInsight,
       vitals: latestCheckIn
         ? {
             painLevel: latestCheckIn.painLevel,

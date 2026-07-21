@@ -70,6 +70,8 @@ On the hospital side, nurses and doctors gain **real-time visibility** into ever
 | 🌙 **Dark Mode** | System-wide dark theme toggle with AsyncStorage persistence |
 | 🔐 **JWT Authentication** | Secure token-based auth with bcrypt password hashing |
 | 🐳 **Dockerized Backend** | One-command setup with Docker Compose |
+| 🤖 **AI Smart Triage** | NLP-powered sentiment analysis flags urgent messages automatically |
+| 📈 **AI Recovery Predictor** | Local ML regression analyzes vitals to predict healing trajectories |
 
 ---
 
@@ -168,6 +170,8 @@ On the hospital side, nurses and doctors gain **real-time visibility** into ever
 | **JWT (jsonwebtoken)** | Token-based authentication |
 | **bcryptjs** | Password hashing |
 | **Helmet** | HTTP security headers |
+| **natural** | Local NLP & Sentiment Analysis |
+| **ml-regression** | Local Machine Learning Regression |
 | **Docker Compose** | Container orchestration |
 
 ---
